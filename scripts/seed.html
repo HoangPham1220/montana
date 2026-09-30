@@ -1,0 +1,16 @@
+<!-- Dev-only seed page: fills localStorage "montana:v1" with sample transactions/assets/budgets.
+     Copy into dist/ and open it ONCE on the same origin (and same --user-data-dir) as the app,
+     after the app has loaded at least once (so defaults exist). See docs/DEVELOPER.md section 10. -->
+<script>
+const cats=['cat-food','cat-transport','cat-housing','cat-shopping','cat-entertain'];const tx=[];let n=0
+for(let m=4;m<=9;m++){tx.push({id:'s'+m,date:`2026-0${m}-05`,type:'income',amount:25000000,categoryId:'cat-salary',note:'Lương',updatedAt:'2026-09-01T00:00:00Z'});
+for(let d=1;d<=25;d+=2)tx.push({id:'t'+(n++),date:`2026-0${m}-${String(d).padStart(2,'0')}`,type:'expense',amount:50000+((n*37)%10)*120000,categoryId:cats[n%5],note:'mẫu '+n,updatedAt:'2026-09-01T00:00:00Z'})}
+const u='2026-09-01T00:00:00Z'
+const assets=[['a1','Vietcombank','acat-cash',1,'VND',30e6,30e6],['a2','Sổ tiết kiệm 12T','acat-savings',1,'sổ',200e6,208e6],['a3','FPT','acat-stock',500,'cổ phiếu',55e6,68e6],['a4','Vàng SJC','acat-gold',2,'lượng',160e6,240e6],['a5','BTC','acat-crypto',0.05,'BTC',150e6,120e6]].map(([id,name,categoryId,quantity,unit,costBasis,currentValue])=>({id,name,categoryId,quantity,unit,costBasis,currentValue,note:'',updatedAt:u}))
+const snaps=[];assets.forEach(a=>['2026-06-01','2026-07-01','2026-08-01','2026-09-30'].forEach((d,i)=>snaps.push({id:a.id+d,assetId:a.id,date:d,value:a.currentValue*(0.85+i*0.05),updatedAt:u})))
+const st=JSON.parse(localStorage.getItem('montana:v1')||'{}')
+st.tables.transactions=tx;st.tables.assets=assets;st.tables.assetSnapshots=snaps
+st.tables.categories=st.tables.categories.map(c=>c.id==='cat-food'?{...c,budget:1500000}:c.id==='cat-shopping'?{...c,budget:3000000}:c)
+st.tables.assetCategories=st.tables.assetCategories.map(c=>({...c,targetPercent:{'acat-cash':10,'acat-savings':30,'acat-stock':25,'acat-gold':25,'acat-crypto':10}[c.id]||0}))
+localStorage.setItem('montana:v1',JSON.stringify(st));document.title='seeded '+st.tables.categories.length
+</script>
