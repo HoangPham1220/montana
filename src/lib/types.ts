@@ -16,6 +16,8 @@ interface BaseRecord {
 export interface Category extends BaseRecord {
   name: string
   type: TxType
+  /** Empty or missing for top-level categories; children may only reference a root category. */
+  parentId?: string
   color: string
   icon: string
   /** Monthly budget in VND, 0 = none. Only meaningful for expense categories. */
@@ -99,7 +101,7 @@ export const TABLE_NAMES: TableName[] = [
 
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
-  categories: ['id', 'name', 'type', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
+  categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
   transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentValue', 'note', 'updatedAt', 'deleted'],

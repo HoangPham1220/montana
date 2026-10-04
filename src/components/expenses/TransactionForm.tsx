@@ -3,6 +3,7 @@ import { remove, upsert } from '../../lib/store'
 import { formatVND, today } from '../../lib/format'
 import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { txAccountId, useAccountBalances } from '../../lib/accounts'
+import { isSelectableCategory } from '../../lib/categoryTree'
 import type { Account, Category, Transaction, TransactionType } from '../../lib/types'
 import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
 import TypeToggle from './TypeToggle'
@@ -66,7 +67,10 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   const accLabel = (a: Account) => `${a.icon} ${a.name} (${formatVND(balances.get(a.id) ?? 0)})`
   const isTransfer = type === 'transfer'
 
-  const options = useMemo(() => categories.filter((c) => c.type === type), [categories, type])
+  const options = useMemo(
+    () => categories.filter((c) => c.type === type && isSelectableCategory(c, categories)),
+    [categories, type],
+  )
   // Keep selection only if it is valid for the current type.
   const selected = options.some((c) => c.id === categoryId) ? categoryId : ''
 
@@ -146,7 +150,7 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
               <option value="">-- Chọn danh mục --</option>
               {options.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
+                  {c.icon} {c.parentId ? `↳ ${c.name}` : c.name}
                 </option>
               ))}
             </Select>

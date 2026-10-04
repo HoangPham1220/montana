@@ -8,6 +8,7 @@ import { formatDate, formatPercent, formatVND, monthOf } from '../lib/format'
 import { useTable } from '../lib/store'
 import { useAccountBalances } from '../lib/accounts'
 import { DEFAULT_ACCOUNT_ID } from '../lib/defaults'
+import { categoryLabel, categorySpend, rootCategory } from '../lib/categoryTree'
 
 export default function Dashboard() {
   const categories = useTable('categories')
@@ -38,7 +39,13 @@ export default function Dashboard() {
         }
       }
     }
-    const slices: Slice[] = [...spendByCat.entries()]
+    const spendByRoot = new Map<string, number>()
+    for (const [id, value] of spendByCat) {
+      const category = catById.get(id)
+      const rootId = category ? rootCategory(category, categories).id : id
+      spendByRoot.set(rootId, (spendByRoot.get(rootId) ?? 0) + value)
+    }
+    const slices: Slice[] = [...spendByRoot.entries()]
       .map(([id, value]) => {
         const c = catById.get(id)
         return { id, value, name: c ? `${c.icon} ${c.name}`.trim() : 'Khác', color: c?.color ?? '#94a3b8' }
@@ -46,7 +53,10 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
     const budgetRows = categories
       .filter((c) => c.type === 'expense' && c.budget > 0)
-      .map((c) => ({ c, spent: spendByCat.get(c.id) ?? 0, ratio: (spendByCat.get(c.id) ?? 0) / c.budget }))
+      .map((c) => {
+        const spent = categorySpend(c, categories, spendByCat)
+        return { c, spent, ratio: spent / c.budget }
+      })
       .filter((r) => r.ratio >= 0.8)
       .sort((a, b) => b.ratio - a.ratio)
     const months: MonthPoint[] = Array.from({ length: 6 }, (_, i) => {
@@ -179,13 +189,13 @@ export default function Dashboard() {
               const transfer = t.type === 'transfer'
               const title = transfer
                 ? `Chuyển tiền: ${accountById.get(t.accountId || DEFAULT_ACCOUNT_ID)?.name ?? 'Không rõ'} → ${accountById.get(t.toAccountId)?.name ?? 'Không rõ'}`
-                : t.note || c?.name || 'Không rõ danh mục'
+                : t.note || categoryLabel(c, categories)
               return (
                 <li key={t.id} className="flex items-center gap-3 py-2 text-sm">
                   <span className="text-xl">{transfer ? '🔁' : (c?.icon ?? '❔')}</span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{title}</div>
-                    <div className="text-xs text-slate-500">{formatDate(t.date)}{transfer ? (t.note ? ` · ${t.note}` : '') : ` · ${c?.name ?? 'Khác'}`}</div>
+                    <div className="text-xs text-slate-500">{formatDate(t.date)}{transfer ? (t.note ? ` · ${t.note}` : '') : ` · ${categoryLabel(c, categories)}`}</div>
                   </div>
                   <span className={`font-semibold ${transfer ? 'text-slate-500' : t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {transfer ? '' : t.type === 'income' ? '+' : '-'}{formatVND(t.amount)}

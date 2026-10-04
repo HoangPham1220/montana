@@ -7,6 +7,7 @@ Tài liệu khác: [Hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md) · [Tài l
 ## Tính năng
 
 - **Quản lý thu chi**: ghi giao dịch thu/chi theo danh mục, đặt ngân sách hằng tháng cho từng danh mục chi.
+- **Danh mục con**: chia nhỏ danh mục thu/chi theo từng nhóm; báo cáo tổng hợp chi tiêu lên danh mục cha.
 - **Nguồn tiền**: quản lý các nguồn tiền (tiền mặt, ngân hàng, ví điện tử, thẻ tín dụng) với số dư ban đầu, số dư tự tính từ thu/chi, chuyển tiền giữa các nguồn (không tính vào thu/chi), lưu trữ nguồn không dùng nữa. Số dư được cộng vào Tổng tài sản. Cần cập nhật `Code.gs` và deploy New version để đồng bộ tab `accounts` (xem mục Cấu trúc Google Sheet).
 - **Quản lý tài sản**: theo dõi tài sản theo danh mục (tiền mặt, tiết kiệm, cổ phiếu, vàng, crypto, bất động sản...), xem phân bổ thực tế so với phân bổ mục tiêu, lịch sử giá trị tài sản. Số dư Nguồn tiền hiện ở nhóm "Tiền mặt & tài khoản" (chỉ đọc), lãi/lỗ chỉ tính trên tài sản đầu tư.
 - **Offline-first**: mọi thao tác đều ghi vào bộ nhớ trình duyệt (localStorage) trước, dùng được khi không có mạng.
@@ -36,7 +37,7 @@ npm run build    # build bản production vào thư mục dist/
 7. Mở app Montana, vào **Cài đặt**, dán URL `/exec` và token.
 8. Bấm **Kiểm tra kết nối**, nếu thành công thì bấm **Đồng bộ**.
 
-> **Lưu ý khi sửa Code.gs:** mỗi lần chỉnh sửa code, phải vào **Deploy → Manage deployments → Edit (biểu tượng bút chì) → Version: New version → Deploy**. URL `/exec` giữ nguyên, không cần cấu hình lại app.
+> **Lưu ý khi sửa Code.gs:** mỗi lần chỉnh sửa code, phải vào **Deploy → Manage deployments → Edit (biểu tượng bút chì) → Version: New version → Deploy**. URL `/exec` giữ nguyên, không cần cấu hình lại app. Bản này thêm cột `parentId` cho tab `categories`; nếu đang dùng Google Sheets, hãy cập nhật và deploy `Code.gs` mới để đồng bộ danh mục con.
 
 ## Bảo mật
 
@@ -68,7 +69,7 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 | Tab | Các cột |
 |---|---|
 | `accounts` | id, name, kind, openingBalance, color, icon, archived, updatedAt, deleted |
-| `categories` | id, name, type, color, icon, budget, updatedAt, deleted |
+| `categories` | id, name, type, parentId, color, icon, budget, updatedAt, deleted |
 | `transactions` | id, date, type, amount, categoryId, accountId, toAccountId, note, updatedAt, deleted |
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |
 | `assets` | id, name, categoryId, quantity, unit, costBasis, currentValue, note, updatedAt, deleted |

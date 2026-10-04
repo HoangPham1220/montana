@@ -102,7 +102,7 @@ Quy ước chung (`BaseRecord`):
 
 **`accounts`** (Nguồn tiền): `name: string`, `kind: 'cash' | 'bank' | 'ewallet' | 'credit'` (`AccountKind`), `openingBalance: number` (VND, **có thể âm**, thẻ tín dụng đang nợ thì âm), `color: string`, `icon: string`, `archived: boolean` (ẩn khỏi danh sách chọn và khỏi tổng; khác `deleted`).
 
-**`categories`** (thu/chi): `name: string`, `type: 'expense' | 'income'`, `color: string`, `icon: string`, `budget: number` (VND/tháng, 0 = không đặt; chỉ có nghĩa với `expense`).
+**`categories`** (thu/chi): `name: string`, `type: 'expense' | 'income'`, `parentId?: string` (rỗng/thiếu = danh mục cấp cao nhất; danh mục con chỉ trỏ tới danh mục cấp cao nhất), `color: string`, `icon: string`, `budget: number` (VND/tháng, 0 = không đặt; chỉ có nghĩa với `expense`).
 
 **`transactions`**: `date: string` (`YYYY-MM-DD`), `type: TransactionType` (`'expense' | 'income' | 'transfer'`; `TxType` = chỉ hai giá trị đầu và vẫn là kiểu của `Category.type`), `amount: number` (VND, luôn dương), `categoryId: string`, `accountId: string`, `toAccountId: string`, `note: string`.
 
@@ -123,7 +123,7 @@ Quy ước chung (`BaseRecord`):
 ```ts
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   accounts:        ['id','name','kind','openingBalance','color','icon','archived','updatedAt','deleted'],
-  categories:      ['id','name','type','color','icon','budget','updatedAt','deleted'],
+  categories:      ['id','name','type','parentId','color','icon','budget','updatedAt','deleted'],
   transactions:    ['id','date','type','amount','categoryId','accountId','toAccountId','note','updatedAt','deleted'],
   assetCategories: ['id','name','color','targetPercent','updatedAt','deleted'],
   assets:          ['id','name','categoryId','quantity','unit','costBasis','currentValue','note','updatedAt','deleted'],

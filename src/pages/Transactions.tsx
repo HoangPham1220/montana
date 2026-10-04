@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { DEFAULT_ACCOUNT_ID } from '../lib/defaults'
 import { useTable } from '../lib/store'
+import { categoryLabel } from '../lib/categoryTree'
 import { accountDelta, isIncomeOrExpense, txAccountId, useAccountBalances } from '../lib/accounts'
 import { formatDate, formatVND, monthOf, today } from '../lib/format'
 import type { Transaction, TransactionType } from '../lib/types'
@@ -51,7 +52,7 @@ export default function Transactions() {
     const filtered = inMonth
       .filter((t) => typeFilter === 'all' || t.type === typeFilter)
       .filter((t) => !accountFilter || txAccountId(t) === accountFilter || t.toAccountId === accountFilter)
-      .filter((t) => !categoryFilter || t.categoryId === categoryFilter)
+      .filter((t) => !categoryFilter || t.categoryId === categoryFilter || catById.get(t.categoryId)?.parentId === categoryFilter)
       .filter((t) => !q || (t.note ?? '').toLowerCase().includes(q))
       .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
     const map = new Map<string, Transaction[]>()
@@ -61,7 +62,7 @@ export default function Transactions() {
       return t.type === 'income' ? t.amount : t.type === 'expense' ? -t.amount : 0
     }
     return Array.from(map, ([date, items]) => ({ date, items, total: items.reduce((s, t) => s + dayTotal(t), 0) }))
-  }, [inMonth, typeFilter, accountFilter, categoryFilter, search])
+  }, [inMonth, typeFilter, accountFilter, categoryFilter, search, catById])
 
   const filterCats = useMemo(
     () => categories.filter((c) => typeFilter === 'all' || c.type === typeFilter),
@@ -128,7 +129,7 @@ export default function Transactions() {
           <option value="">Mọi danh mục</option>
           {filterCats.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.icon} {c.name}
+              {c.icon} {categoryLabel(c, categories)}
             </option>
           ))}
         </Select>
@@ -181,7 +182,7 @@ export default function Transactions() {
                       <CategoryDot icon={isTransfer ? '🔁' : (c?.icon ?? '❓')} color={isTransfer ? '#0ea5e9' : (c?.color ?? '#94a3b8')} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">
-                          {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : (c?.name ?? 'Không rõ')}
+                          {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : categoryLabel(c, categories)}
                         </span>
                         {!isTransfer && <span className="block truncate text-xs text-slate-400">{accLabel(t.accountId)}</span>}
                         {t.note && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{t.note}</span>}

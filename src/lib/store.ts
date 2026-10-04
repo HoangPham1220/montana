@@ -245,7 +245,7 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
   const toBool = (v: unknown) => v === true || v === 'TRUE' || v === 'true'
   out.deleted = toBool(out.deleted)
   if (table === 'accounts' || 'archived' in out) out.archived = toBool(out.archived)
-  for (const k of ['id', 'updatedAt', 'date', 'name', 'note', 'categoryId', 'assetId', 'unit', 'color', 'icon', 'type', 'kind', 'accountId', 'toAccountId']) {
+  for (const k of ['id', 'updatedAt', 'date', 'name', 'note', 'categoryId', 'parentId', 'assetId', 'unit', 'color', 'icon', 'type', 'kind', 'accountId', 'toAccountId']) {
     if (k in out) out[k] = out[k] == null ? '' : String(out[k])
   }
   if (table === 'transactions') {

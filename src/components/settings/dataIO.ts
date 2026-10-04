@@ -2,6 +2,7 @@ import { TABLE_NAMES, type Tables } from '../../lib/types'
 import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { getState, importTables as importIntoStore } from '../../lib/store'
 import { today } from '../../lib/format'
+import { categoryLabel } from '../../lib/categoryTree'
 
 export function download(filename: string, content: string, mime: string) {
   const url = URL.createObjectURL(new Blob([content], { type: mime }))
@@ -27,7 +28,7 @@ const csvCell = (v: string | number) => {
 
 export function exportTransactionsCsv() {
   const { tables } = getState()
-  const cats = new Map(tables.categories.map((c) => [c.id, c.name]))
+  const cats = new Map(tables.categories.map((c) => [c.id, c]))
   const accs = new Map(tables.accounts.map((a) => [a.id, a.name]))
   const accName = (id: string) => accs.get(id || DEFAULT_ACCOUNT_ID) ?? ''
   const typeLabel = { expense: 'Chi', income: 'Thu', transfer: 'Chuyển' } as const
@@ -37,7 +38,7 @@ export function exportTransactionsCsv() {
     .map((t) => [
       t.date,
       typeLabel[t.type] ?? 'Chi',
-      cats.get(t.categoryId) ?? '',
+      categoryLabel(cats.get(t.categoryId), tables.categories),
       accName(t.accountId),
       t.type === 'transfer' ? accName(t.toAccountId) : '',
       t.amount,

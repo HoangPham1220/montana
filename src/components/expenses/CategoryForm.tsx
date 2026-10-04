@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { remove, upsert } from '../../lib/store'
 import type { Category, TxType } from '../../lib/types'
-import { Button, Field, Input, Modal, MoneyInput } from '../ui'
+import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
 import TypeToggle from './TypeToggle'
 
 const EMOJIS = ['🍜', '☕', '🛒', '🚗', '🏠', '💡', '📱', '🎬', '👕', '💊', '📚', '✈️', '🎁', '💰', '💼', '📈']
@@ -13,6 +13,8 @@ interface Props {
   defaultType?: TxType
   /** Number of live transactions using the category (for the delete warning). */
   txCount: number
+  categories: Category[]
+  defaultParentId?: string
   onClose: () => void
 }
 
@@ -24,20 +26,33 @@ export default function CategoryForm({ open, ...rest }: Props) {
   )
 }
 
-function Body({ editing, defaultType = 'expense', txCount, onClose }: Omit<Props, 'open'>) {
+function Body({ editing, defaultType = 'expense', txCount, categories, defaultParentId, onClose }: Omit<Props, 'open'>) {
   const [name, setName] = useState(editing?.name ?? '')
   const [type, setType] = useState<TxType>(editing?.type ?? defaultType)
   const [icon, setIcon] = useState(editing?.icon ?? EMOJIS[0])
   const [color, setColor] = useState(editing?.color ?? COLORS[0])
   const [budget, setBudget] = useState(editing?.budget ?? 0)
+  const [parentId, setParentId] = useState(editing?.parentId ?? defaultParentId ?? '')
   const [error, setError] = useState('')
+  const children = editing ? categories.filter((category) => category.parentId === editing.id) : []
+  const hasChildren = children.length > 0
+  const parentOptions = categories.filter((category) =>
+    category.type === type && !category.parentId && category.id !== editing?.id && (
+      category.id === editing?.parentId || category.id === defaultParentId ||
+      !categories.some((item) => item.parentId === category.id)
+    ),
+  )
 
   const save = () => {
     if (!name.trim()) return setError('Nhập tên danh mục')
+    if (hasChildren && editing && type !== editing.type) return setError('Hãy chuyển các danh mục con trước khi đổi loại danh mục')
+    if (parentId && !parentOptions.some((category) => category.id === parentId)) return setError('Danh mục cha không hợp lệ')
+    if (hasChildren && parentId) return setError('Hãy chuyển các danh mục con lên cấp cao nhất trước')
     upsert('categories', {
       id: editing?.id,
       name: name.trim(),
       type,
+      parentId,
       icon: icon.trim() || '📦',
       color,
       budget: type === 'expense' ? budget : 0,
@@ -47,10 +62,15 @@ function Body({ editing, defaultType = 'expense', txCount, onClose }: Omit<Props
 
   const del = () => {
     if (!editing) return
-    const msg = txCount
-      ? `Danh mục "${editing.name}" có ${txCount} giao dịch. Các giao dịch vẫn được giữ nhưng sẽ hiện "Không rõ". Vẫn xoá?`
-      : `Xoá danh mục "${editing.name}"?`
+    const childMessage = children.length
+      ? ` ${children.length} danh mục con sẽ được chuyển lên cấp cao nhất.`
+      : ''
+    const transactionMessage = txCount
+      ? ` ${txCount} giao dịch đang dùng danh mục này và sẽ không còn danh mục.`
+      : ''
+    const msg = `Xoá danh mục "${editing.name}"?${childMessage}${transactionMessage}`
     if (window.confirm(msg)) {
+      for (const child of children) upsert('categories', { ...child, parentId: '' })
       remove('categories', editing.id)
       onClose()
     }
@@ -70,6 +90,15 @@ function Body({ editing, defaultType = 'expense', txCount, onClose }: Omit<Props
       <Field label="Tên">
         <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Ăn uống" />
       </Field>
+      <Field label="Danh mục cha (tuỳ chọn)">
+        <Select value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={hasChildren}>
+          <option value="">-- Danh mục cấp cao nhất --</option>
+          {parentOptions.map((category) => (
+            <option key={category.id} value={category.id}>{category.icon} {category.name}</option>
+          ))}
+        </Select>
+      </Field>
+      {hasChildren && <p className="text-xs text-slate-500">Danh mục đang có mục con nên không thể chuyển thành danh mục con.</p>}
       <Field label="Biểu tượng (emoji)">
         <Input value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={8} />
       </Field>

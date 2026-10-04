@@ -11,7 +11,7 @@
 // Keep in sync with SHEET_COLUMNS in src/lib/types.ts
 var SHEET_COLUMNS = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
-  categories: ['id', 'name', 'type', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
+  categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
   transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentValue', 'note', 'updatedAt', 'deleted'],
