@@ -37,10 +37,7 @@ function Body({ editing, defaultType = 'expense', txCount, categories, defaultPa
   const children = editing ? categories.filter((category) => category.parentId === editing.id) : []
   const hasChildren = children.length > 0
   const parentOptions = categories.filter((category) =>
-    category.type === type && !category.parentId && category.id !== editing?.id && (
-      category.id === editing?.parentId || category.id === defaultParentId ||
-      !categories.some((item) => item.parentId === category.id)
-    ),
+    category.type === type && !category.parentId && category.id !== editing?.id,
   )
 
   const save = () => {
