@@ -8,6 +8,7 @@ Tài liệu khác: [Hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md) · [Tài l
 
 - **Quản lý thu chi**: ghi giao dịch thu/chi theo danh mục, đặt ngân sách hằng tháng cho từng danh mục chi.
 - **Danh mục con**: chia nhỏ danh mục thu/chi theo từng nhóm; báo cáo tổng hợp chi tiêu lên danh mục cha.
+- **Hệ số nhập tiền**: cấu hình mã tiền và hệ số trong Cài đặt; mọi ô tiền nhân hệ số khi nhập, còn dữ liệu lưu và báo cáo vẫn theo VND.
 - **Nguồn tiền**: quản lý các nguồn tiền (tiền mặt, ngân hàng, ví điện tử, thẻ tín dụng) với số dư ban đầu, số dư tự tính từ thu/chi, chuyển tiền giữa các nguồn (không tính vào thu/chi), lưu trữ nguồn không dùng nữa. Số dư được cộng vào Tổng tài sản. Cần cập nhật `Code.gs` và deploy New version để đồng bộ tab `accounts` (xem mục Cấu trúc Google Sheet).
 - **Quản lý tài sản**: theo dõi tài sản theo danh mục (tiền mặt, tiết kiệm, cổ phiếu, vàng, crypto, bất động sản...), xem phân bổ thực tế so với phân bổ mục tiêu, lịch sử giá trị tài sản. Số dư Nguồn tiền hiện ở nhóm "Tiền mặt & tài khoản" (chỉ đọc), lãi/lỗ chỉ tính trên tài sản đầu tư.
 - **Offline-first**: mọi thao tác đều ghi vào bộ nhớ trình duyệt (localStorage) trước, dùng được khi không có mạng.

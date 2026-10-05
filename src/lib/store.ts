@@ -15,6 +15,8 @@ export interface Settings {
   apiUrl: string
   token: string
   autoSync: boolean
+  moneyInputMultiplier: number
+  moneyInputCurrencyCode: string
 }
 
 export interface SyncState {
@@ -49,7 +51,7 @@ function load(): State {
   const base: State = {
     tables: emptyTables(),
     dirty: emptyDirty(),
-    settings: { apiUrl: '', token: '', autoSync: true },
+    settings: { apiUrl: '', token: '', autoSync: true, moneyInputMultiplier: 1, moneyInputCurrencyCode: 'VND' },
     sync: { status: 'idle', lastSyncAt: null, error: null },
   }
   try {

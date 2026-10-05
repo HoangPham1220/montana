@@ -19,6 +19,12 @@ Thanh điều hướng gồm: **Tổng quan**, **Thu chi**, **Nguồn tiền**, 
 
 Dữ liệu luôn được lưu ngay trên máy bạn, không cần mạng. Google Sheet chỉ là nơi sao lưu và đồng bộ.
 
+### Rút gọn số tiền khi nhập
+
+Vào **Cài đặt → Nhập tiền**, nhập **Mã tiền nhập** và **Hệ số nhân**. Ví dụ mã `VND`, hệ số `1000`: gõ `20` trong một ô tiền sẽ lưu thành `20.000 VND`. Hệ số áp dụng cho giao dịch, số dư, ngân sách và giá trị tài sản; danh sách và báo cáo vẫn hiển thị VND. Đổi hệ số không thay đổi các số tiền đã lưu.
+
+Cài đặt này được lưu trên trình duyệt hiện tại, không đồng bộ qua Google Sheets; hãy đặt cùng mã tiền và hệ số trên từng thiết bị bạn dùng.
+
 ## 2. Ghi thu chi
 
 **Thêm giao dịch:** vào **Thu chi** → **+ Thêm**. Điền:

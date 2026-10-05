@@ -149,7 +149,7 @@ Lý do dùng id cố định + epoch 0: nếu hai thiết bị cùng chạy lầ
 
 - `tables: Tables`
 - `dirty: Record<TableName, string[]>`: id đã đổi cục bộ kể từ lần push thành công gần nhất.
-- `settings: { apiUrl, token, autoSync }` (mặc định `autoSync: true`).
+- `settings: { apiUrl, token, autoSync, moneyInputMultiplier, moneyInputCurrencyCode }` (mặc định hệ số `1`, mã `VND`).
 - `sync: { status: 'idle'|'syncing'|'error', lastSyncAt, error }`.
 
 Khoá localStorage: `montana:v1`. `persist()` ghi `{ tables, dirty, settings, lastSyncAt }` sau **mỗi** `setState` (trạng thái `syncing`/`error` không được lưu). Lỗi quota/private mode bị nuốt, app tiếp tục chạy trong bộ nhớ.

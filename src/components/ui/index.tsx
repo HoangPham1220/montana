@@ -1,6 +1,7 @@
 // Shared UI primitives. Keep feature code on these so pages look consistent.
 import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
 import { formatNumber, parseMoney } from '../../lib/format'
+import { useStore } from '../../lib/store'
 
 export function Card({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -54,22 +55,32 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
 
 /** Money input: shows grouped digits, accepts shorthand like 50k, 1.5tr. */
 export function MoneyInput({ value, onChange, ...rest }: { value: number; onChange: (n: number) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
-  const [text, setText] = useState(value ? formatNumber(value) : '')
+  const storedMultiplier = useStore((s) => s.settings.moneyInputMultiplier)
+  const currencyCode = useStore((s) => s.settings.moneyInputCurrencyCode)
+  const multiplier = Number.isFinite(storedMultiplier) && storedMultiplier > 0 ? storedMultiplier : 1
+  const inputValue = value / multiplier
+  const [text, setText] = useState(inputValue ? formatNumber(inputValue) : '')
   useEffect(() => {
-    setText((t) => (parseMoney(t) === value ? t : value ? formatNumber(value) : ''))
-  }, [value])
+    setText((t) => (parseMoney(t) === inputValue ? t : inputValue ? formatNumber(inputValue) : ''))
+  }, [inputValue])
+  const suffix = multiplier === 1 ? '' : `${currencyCode} × ${formatNumber(multiplier)}`
+  const placeholder = multiplier === 1 ? rest.placeholder : 'VD: 20'
   return (
-    <input
-      inputMode="decimal"
-      {...rest}
-      className={`${inputCls} ${rest.className ?? ''}`}
-      value={text}
-      onChange={(e) => {
-        setText(e.target.value)
-        onChange(parseMoney(e.target.value))
-      }}
-      onBlur={() => setText(value ? formatNumber(value) : '')}
-    />
+    <span className="relative block">
+      <input
+        inputMode="decimal"
+        {...rest}
+        placeholder={placeholder}
+        className={`${inputCls} ${suffix ? 'pr-28' : ''} ${rest.className ?? ''}`}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          onChange(Math.round(parseMoney(e.target.value) * multiplier))
+        }}
+        onBlur={() => setText(inputValue ? formatNumber(inputValue) : '')}
+      />
+      {suffix && <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[10px] text-slate-400">{suffix}</span>}
+    </span>
   )
 }
 
