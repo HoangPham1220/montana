@@ -15,11 +15,12 @@ var SHEET_COLUMNS = {
   transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentValue', 'note', 'updatedAt', 'deleted'],
-  assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted']
+  assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
+  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted']
 };
-var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots'];
-var NUMBER_FIELDS = ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentValue', 'value', 'openingBalance'];
-var BOOLEAN_FIELDS = ['deleted', 'archived'];
+var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings'];
+var NUMBER_FIELDS = ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentValue', 'value', 'openingBalance', 'moneyInputMultiplier'];
+var BOOLEAN_FIELDS = ['deleted', 'archived', 'autoSync'];
 var DATE_FIELDS = ['date']; // yyyy-MM-dd text; other text fields that hold Dates become ISO strings
 
 // ---------------------------------------------------------------- web app

@@ -38,7 +38,9 @@ npm run build    # build bản production vào thư mục dist/
 7. Mở app Montana, vào **Cài đặt**, dán URL `/exec` và token.
 8. Bấm **Kiểm tra kết nối**, nếu thành công thì bấm **Đồng bộ**.
 
-> **Lưu ý khi sửa Code.gs:** mỗi lần chỉnh sửa code, phải vào **Deploy → Manage deployments → Edit (biểu tượng bút chì) → Version: New version → Deploy**. URL `/exec` giữ nguyên, không cần cấu hình lại app. Bản này thêm cột `parentId` cho tab `categories`; nếu đang dùng Google Sheets, hãy cập nhật và deploy `Code.gs` mới để đồng bộ danh mục con.
+Tab `appSettings` lưu các tuỳ chọn không bí mật (tự đồng bộ, mã tiền nhập và hệ số nhập) để các thiết bị nhận cùng cấu hình. Mỗi thiết bị vẫn cần URL `/exec` và token một lần để kết nối; hai giá trị này chỉ lưu trên trình duyệt.
+
+> **Lưu ý khi sửa Code.gs:** mỗi lần chỉnh sửa code, phải vào **Deploy → Manage deployments → Edit (biểu tượng bút chì) → Version: New version → Deploy**. URL `/exec` giữ nguyên. Bản này thêm `parentId` cho `categories` và tab `appSettings`; nếu đang dùng Google Sheets, hãy cập nhật, deploy `Code.gs` mới rồi đồng bộ để dùng danh mục con và chia sẻ cấu hình giữa các thiết bị.
 
 ## Bảo mật
 
@@ -75,5 +77,6 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |
 | `assets` | id, name, categoryId, quantity, unit, costBasis, currentValue, note, updatedAt, deleted |
 | `assetSnapshots` | id, assetId, date, value, updatedAt, deleted |
+| `appSettings` | id, autoSync, moneyInputMultiplier, moneyInputCurrencyCode, updatedAt, deleted |
 
 Ghi chú: `date` định dạng `YYYY-MM-DD`; `id`, `date`, `updatedAt` và các cột văn bản được lưu dạng text để Sheets không tự chuyển thành ngày/công thức; `deleted` và `archived` là TRUE/FALSE; `type` của giao dịch là `expense`, `income` hoặc `transfer` (chuyển tiền: `accountId` -> `toAccountId`); `kind` của nguồn tiền là `cash`, `bank`, `ewallet` hoặc `credit`; `openingBalance` có thể âm; sheet cũ thiếu cột `accountId`/`toAccountId` sẽ được script tự thêm vào cuối (dòng cũ để trống); số tiền tính bằng VND.

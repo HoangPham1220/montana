@@ -78,6 +78,13 @@ export interface AssetSnapshot extends BaseRecord {
   value: number
 }
 
+/** Shared non-secret app preferences stored in the linked Google Sheet. */
+export interface AppSettingsRecord extends BaseRecord {
+  autoSync: boolean
+  moneyInputMultiplier: number
+  moneyInputCurrencyCode: string
+}
+
 export interface Tables {
   accounts: Account[]
   categories: Category[]
@@ -85,6 +92,7 @@ export interface Tables {
   assetCategories: AssetCategory[]
   assets: Asset[]
   assetSnapshots: AssetSnapshot[]
+  appSettings: AppSettingsRecord[]
 }
 
 export type TableName = keyof Tables
@@ -97,6 +105,7 @@ export const TABLE_NAMES: TableName[] = [
   'assetCategories',
   'assets',
   'assetSnapshots',
+  'appSettings',
 ]
 
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
@@ -106,6 +115,7 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
+  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted'],
 }
 
 // ---- Apps Script API contract ----

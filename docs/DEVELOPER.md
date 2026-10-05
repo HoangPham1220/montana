@@ -40,8 +40,8 @@ Stack: Vite 8, React 19, TypeScript, Tailwind v4, recharts 3, react-router-dom 7
                                         └───────────────┬─────────────────┘
                                                         │ SpreadsheetApp
                                                         ▼
-                                        Google Sheet: 6 tab (accounts, categories, transactions,
-                                        assetCategories, assets, assetSnapshots)
+                                        Google Sheet: 7 tab (accounts, categories, transactions,
+                                        assetCategories, assets, assetSnapshots, appSettings)
 ```
 
 Nguyên tắc: **UI chỉ đọc/ghi qua store**, không bao giờ gọi mạng trực tiếp. Mọi thao tác ghi vào localStorage trước (offline-first), rồi sync nền.
@@ -116,7 +116,9 @@ Quy ước chung (`BaseRecord`):
 
 **`assetSnapshots`** (lịch sử giá trị): `assetId: string`, `date: string` (`YYYY-MM-DD`), `value: number`.
 
-`Tables` là object `{ accounts, categories, transactions, assetCategories, assets, assetSnapshots }`; `TableName = keyof Tables`; `RecordOf<T>` = kiểu phần tử của bảng `T`; `TABLE_NAMES` là mảng thứ tự duyệt.
+**`appSettings`** (cấu hình chung, không chứa thông tin xác thực): một dòng `id: 'app-settings:shared'`, `autoSync: boolean`, `moneyInputMultiplier: number`, `moneyInputCurrencyCode: string`. `apiUrl` và `token` chỉ lưu cục bộ vì cần có sẵn trước khi app kết nối được với Sheet.
+
+`Tables` là object `{ accounts, categories, transactions, assetCategories, assets, assetSnapshots, appSettings }`; `TableName = keyof Tables`; `RecordOf<T>` = kiểu phần tử của bảng `T`; `TABLE_NAMES` là mảng thứ tự duyệt.
 
 ### SHEET_COLUMNS
 
@@ -128,6 +130,7 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   assetCategories: ['id','name','color','targetPercent','updatedAt','deleted'],
   assets:          ['id','name','categoryId','quantity','unit','costBasis','currentValue','note','updatedAt','deleted'],
   assetSnapshots:  ['id','assetId','date','value','updatedAt','deleted'],
+  appSettings:    ['id','autoSync','moneyInputMultiplier','moneyInputCurrencyCode','updatedAt','deleted'],
 }
 ```
 
@@ -303,7 +306,7 @@ Client gửi header `Content-Type: text/plain;charset=utf-8` và `redirect: 'fol
 ```jsonc
 { "ok": true, "serverTime": "2026-09-30T01:00:00.000Z" }                        // ping
 { "ok": true, "serverTime": "…", "data": { "accounts": [...], "categories": [...], "transactions": [...],
-  "assetCategories": [...], "assets": [...], "assetSnapshots": [...] } }         // pull, push
+  "assetCategories": [...], "assets": [...], "assetSnapshots": [...], "appSettings": [...] } } // pull, push
 { "ok": false, "error": "Unauthorized" }                                          // lỗi
 ```
 
@@ -365,7 +368,7 @@ Sửa `Code.gs` **không** có hiệu lực với URL `/exec` cho đến khi t�
 2. **Deploy -> Manage deployments -> biểu tượng bút chì (Edit) -> Version: New version -> Deploy.**
 3. URL `/exec` giữ nguyên, app không cần cấu hình lại. (Chọn "New deployment" sẽ sinh URL mới, tránh làm vậy trừ khi cần.)
 
-Nếu thêm cột trong `SHEET_COLUMNS`, sau khi deploy chỉ cần `pull`/`push` một lần là `ensureSheets_` tự thêm cột thiếu. Ví dụ với tính năng Nguồn tiền: tab `accounts` được tạo mới, còn `transactions` cũ được append `accountId`, `toAccountId` vào cuối header (dòng cũ đọc ra `''`).
+Nếu thêm bảng/cột trong `SHEET_COLUMNS`, sau khi deploy chỉ cần `pull`/`push` một lần là `ensureSheets_` tự tạo tab hoặc thêm cột thiếu. Ví dụ với tính năng Nguồn tiền: tab `accounts` được tạo mới, còn `transactions` cũ được append `accountId`, `toAccountId` vào cuối header (dòng cũ đọc ra `''`).
 
 **Bắt buộc với người dùng đã có Sheet trước khi có Nguồn tiền:** phải dán `Code.gs` mới và deploy New version. Bản `Code.gs` cũ lặp qua `TABLE_NAMES` **cũ** (không có `accounts`) nên `applyChanges_` bỏ qua im lặng `changes.accounts` (không báo lỗi), `readAll_` không trả bảng `accounts`, và `readTable_` chỉ đọc các cột trong `SHEET_COLUMNS` cũ nên bỏ `accountId`/`toAccountId`. Hệ quả ở client (suy ra từ code, `doSync`): push vẫn "thành công" và các id dirty được xoá dù server không lưu; `res.data.accounts ?? []` rỗng nên nguồn tiền chỉ còn ở máy hiện tại (máy khác/sau khi xoá dữ liệu local sẽ chỉ có `acc-cash` mặc định); giao dịch pull về có `accountId = ''`, và vì `updatedAt` bằng nhau thì bản server thắng, nên `accountId`/`toAccountId` trong máy bị ghi đè về `''` (mọi giao dịch về Tiền mặt, chuyển tiền mất nguồn đến).
 
@@ -475,7 +478,7 @@ node scripts/test-apps-script.cjs      # chạy từ thư mục gốc dự án
 Script nạp nguyên văn `apps-script/Code.gs` vào `vm` context cùng các bản giả của `SpreadsheetApp` (sheet trong bộ nhớ, giới hạn `maxRows` như thật), `PropertiesService`, `LockService`, `ContentService`, `Utilities`, `Session`. In `PASS`/`FAIL` cho từng kiểm tra, `process.exitCode = 1` nếu có `FAIL`. Nó kiểm tra:
 
 - `doGet`; sai token / token cùng độ dài nhưng khác / thiếu token; JSON hỏng; `action` lạ; `ping`.
-- `pull` tạo đủ 6 tab (gồm `accounts`) với header đúng, `transactions` có `accountId`, `toAccountId`.
+- `pull` tạo đủ 7 tab (gồm `accounts`, `appSettings`) với header đúng, `transactions` có `accountId`, `toAccountId`.
 - `push`: chèn mới; kiểu dữ liệu khứ hồi; LWW (cũ thua, mới thắng, **bằng nhau thì thắng**); xoá mềm giữ dòng; bỏ dòng không có id; id lặp trong một push; số không hợp lệ thành `0`.
 - `accounts`: khứ hồi gồm `openingBalance` âm/lẻ, `archived` boolean (kể cả chuỗi `"false"`), lưu đúng kiểu number/boolean trong sheet; giao dịch `transfer` giữ `accountId`/`toAccountId`, `categoryId = ''`.
 - **Migration Sheet cũ**: sheet `transactions` chỉ có header cũ được append `accountId`, `toAccountId` ở cuối; dòng cũ đọc ra `''`; sửa dòng cũ / thêm dòng mới ghi đúng cột; dòng không đụng tới giữ nguyên.

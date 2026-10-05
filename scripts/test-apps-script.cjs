@@ -109,8 +109,8 @@ check('ping ok with serverTime', (() => { const r = send({ token: T, action: 'pi
 
 // ---------------------------------------------------------------- pull creates tabs
 let r = send({ token: T, action: 'pull' })
-check('pull ok and returns all 6 tables', r.ok && ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots'].every((t) => Array.isArray(r.data[t])), r.data && Object.keys(r.data))
-check('tabs created with header row', Object.keys(sheets).length === 6 && Object.keys(r.data).join() === 'accounts,categories,transactions,assetCategories,assets,assetSnapshots' && sheets.transactions.data[0].join() === 'id,date,type,amount,categoryId,accountId,toAccountId,note,updatedAt,deleted' && sheets.accounts.data[0].join() === 'id,name,kind,openingBalance,color,icon,archived,updatedAt,deleted', sheets.transactions && sheets.transactions.data[0])
+check('pull ok and returns all 7 tables', r.ok && ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings'].every((t) => Array.isArray(r.data[t])), r.data && Object.keys(r.data))
+check('tabs created with header row', Object.keys(sheets).length === 7 && Object.keys(r.data).join() === 'accounts,categories,transactions,assetCategories,assets,assetSnapshots,appSettings' && sheets.transactions.data[0].join() === 'id,date,type,amount,categoryId,accountId,toAccountId,note,updatedAt,deleted' && sheets.accounts.data[0].join() === 'id,name,kind,openingBalance,color,icon,archived,updatedAt,deleted' && sheets.appSettings.data[0].join() === 'id,autoSync,moneyInputMultiplier,moneyInputCurrencyCode,updatedAt,deleted', sheets.transactions && sheets.transactions.data[0])
 
 // ---------------------------------------------------------------- push / LWW
 r = send({ token: T, action: 'push', changes: { transactions: [tx('a', 50000, '2026-09-30T01:00:00Z'), tx('b', 30000, '2026-09-30T01:00:00Z')] } })

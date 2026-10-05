@@ -23,7 +23,7 @@ Dữ liệu luôn được lưu ngay trên máy bạn, không cần mạng. Goog
 
 Vào **Cài đặt → Nhập tiền**, nhập **Mã tiền nhập** và **Hệ số nhân**. Ví dụ mã `VND`, hệ số `1000`: gõ `20` trong một ô tiền sẽ lưu thành `20.000 VND`. Hệ số áp dụng cho giao dịch, số dư, ngân sách và giá trị tài sản; danh sách và báo cáo vẫn hiển thị VND. Đổi hệ số không thay đổi các số tiền đã lưu.
 
-Cài đặt này được lưu trên trình duyệt hiện tại, không đồng bộ qua Google Sheets; hãy đặt cùng mã tiền và hệ số trên từng thiết bị bạn dùng.
+Mã tiền, hệ số và tuỳ chọn tự động đồng bộ được lưu trong tab `appSettings` khi đã kết nối Google Sheets, nên sẽ dùng chung trên các thiết bị sau khi đồng bộ. URL Web App và token là thông tin kết nối riêng của từng trình duyệt: nhập chúng một lần trên thiết bị mới rồi bấm **Đồng bộ ngay** để tải cấu hình chung. Nếu dùng Sheet đã có sẵn, hãy cập nhật và deploy `Code.gs` mới trước (mục 7).
 
 ## 2. Ghi thu chi
 
@@ -98,7 +98,7 @@ Mỗi giao dịch thu/chi hiện tên nguồn tiền bên dưới tên danh mụ
 
 > **Cảnh báo tính trùng:** trước khi có tính năng này, có thể bạn đã nhập tài khoản ngân hàng/ví/tiền mặt như một **tài sản** (nhóm "Tiền mặt & tài khoản"). Nếu giờ bạn lại tạo nó ở **Nguồn tiền** thì tiền bị tính hai lần trong Tổng tài sản. Hãy **chuyển sang Nguồn tiền** (nhập số dư ban đầu) rồi **xoá tài sản** tương ứng ở trang Tài sản.
 
-**Đồng bộ Google Sheet:** Nguồn tiền được lưu ở tab mới `accounts`, và tab `transactions` có thêm cột `accountId`, `toAccountId` (script tự thêm vào cuối, dòng cũ để trống). Bạn **bắt buộc phải cập nhật `Code.gs`** trong Apps Script bằng bản mới và **Deploy → Manage deployments → Edit → Version: New version → Deploy**, nếu không Nguồn tiền sẽ không lên Sheet (xem mục 10).
+**Đồng bộ Google Sheet:** Nguồn tiền được lưu ở tab mới `accounts`, danh mục con cần cột `parentId`, và cấu hình dùng chung được lưu ở tab `appSettings`. Nếu đã có Sheet, hãy cập nhật `Code.gs` trong Apps Script bằng [bản mới](https://github.com/HoangPham1220/montana/blob/main/apps-script/Code.gs), rồi **Deploy → Manage deployments → Edit → Version: New version → Deploy**. Lần đồng bộ kế tiếp sẽ tự tạo tab/cột còn thiếu.
 
 ## 4. Danh mục & ngân sách
 
@@ -192,8 +192,8 @@ Bấm vào huy hiệu (khi đã kết nối) để **đồng bộ ngay**.
 ## 8. Dùng trên nhiều thiết bị
 
 1. Trên mỗi thiết bị (điện thoại, laptop...), mở cùng địa chỉ web của Montana.
-2. Vào **Cài đặt** và nhập **cùng một Web App URL và cùng một Token**.
-3. Bấm **Lưu** rồi **Đồng bộ ngay**. Dữ liệu trên Sheet sẽ được tải về máy mới.
+2. Vào **Cài đặt**, nhập **Web App URL và Token** của Sheet rồi bấm **Lưu**.
+3. Bấm **Đồng bộ ngay**. Dữ liệu và cấu hình chung trong tab `appSettings` sẽ được tải về máy mới.
 
 Cách hoạt động: mỗi bản ghi có thời điểm sửa cuối; nếu cùng một bản ghi được sửa ở hai nơi thì **bản sửa sau cùng thắng**. Vì vậy:
 
@@ -230,7 +230,7 @@ Thường do một trong các nguyên nhân sau:
 - Máy đang không có mạng, hoặc trình duyệt/tiện ích chặn kết nối.
 
 **Dữ liệu không lên Google Sheet.**
-Kiểm tra lần lượt: (1) huy hiệu có đang là "Chưa kết nối Google Sheet" không; (2) **Tự động đồng bộ** có bật không, hoặc bấm huy hiệu / **Đồng bộ ngay**; (3) huy hiệu có hiện "Lỗi: ..." không, xử lý theo các mục trên; (4) có bản ghi nào đang "chờ" không, đợi có mạng rồi đồng bộ lại. Trong Sheet, dữ liệu nằm ở các tab `accounts`, `categories`, `transactions`, `assetCategories`, `assets`, `assetSnapshots`. Nếu thiếu tab `accounts`, xem câu hỏi "Sau khi cập nhật, Nguồn tiền không lên Sheet?" bên dưới.
+Kiểm tra lần lượt: (1) huy hiệu có đang là "Chưa kết nối Google Sheet" không; (2) **Tự động đồng bộ** có bật không, hoặc bấm huy hiệu / **Đồng bộ ngay**; (3) huy hiệu có hiện "Lỗi: ..." không, xử lý theo các mục trên; (4) có bản ghi nào đang "chờ" không, đợi có mạng rồi đồng bộ lại. Trong Sheet, dữ liệu nằm ở các tab `accounts`, `categories`, `transactions`, `assetCategories`, `assets`, `assetSnapshots`, `appSettings`. Nếu thiếu tab mới, cập nhật và deploy `Code.gs` rồi đồng bộ lại.
 
 **Mở app lên thấy mất hết dữ liệu.**
 Dữ liệu được lưu trong trình duyệt nên sẽ mất nếu bạn xoá cache/dữ liệu trang web, dùng chế độ ẩn danh, hoặc đổi trình duyệt/thiết bị. Nếu đã kết nối Google Sheet: vào **Cài đặt**, nhập lại URL + token, bấm **Đồng bộ ngay** là lấy lại đầy đủ. Nếu chưa kết nối, hãy nhập file sao lưu bằng **Nhập JSON**. Vì vậy nên kết nối Sheet hoặc xuất JSON định kỳ.

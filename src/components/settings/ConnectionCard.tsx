@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Card, Field, Input } from '../ui'
 import { pendingCount, sync, testConnection, updateSettings, useStore } from '../../lib/store'
 
@@ -15,6 +15,8 @@ export function ConnectionCard() {
   const [show, setShow] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [testing, setTesting] = useState(false)
+
+  useEffect(() => setAuto(settings.autoSync), [settings.autoSync])
 
   const dirty = url !== settings.apiUrl || token !== settings.token || auto !== settings.autoSync
   const save = () => {
@@ -84,6 +86,7 @@ export function ConnectionCard() {
             <li>Triển khai dạng Web App (chạy bằng tài khoản của bạn, ai có link cũng truy cập được).</li>
             <li>Dán URL và token vào đây, bấm Kiểm tra kết nối.</li>
           </ol>
+          <p className="mt-2 text-xs text-slate-500">URL và token cần nhập một lần trên từng thiết bị. Sau đó bấm Đồng bộ ngay để tải các tuỳ chọn dùng chung từ tab appSettings.</p>
           <p className="mt-2 text-xs text-slate-500">Chi tiết từng bước xem trong README của dự án.</p>
         </div>
       </div>

@@ -41,7 +41,7 @@ export function MoneyInputSettings() {
           </Field>
         </div>
         <p className="text-xs text-slate-500">
-          Ví dụ: mã VND, hệ số 1.000, nhập 20 sẽ lưu thành 20.000 ₫. Các số đã lưu và báo cáo vẫn dùng VND; đổi hệ số không sửa dữ liệu cũ.
+          Ví dụ: mã VND, hệ số 1.000, nhập 20 sẽ lưu thành 20.000 ₫. Các số đã lưu và báo cáo vẫn dùng VND; đổi hệ số không sửa dữ liệu cũ. Khi có Google Sheet, cấu hình này được chia sẻ qua tab appSettings.
         </p>
         <div className="flex items-center gap-3">
           <Button type="submit">Lưu</Button>

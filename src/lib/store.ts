@@ -5,6 +5,7 @@ import {
   TABLE_NAMES,
   type ApiRequest,
   type ApiResponse,
+  type AppSettingsRecord,
   type RecordOf,
   type TableName,
   type Tables,
@@ -34,6 +35,18 @@ export interface State {
 }
 
 const STORAGE_KEY = 'montana:v1'
+const APP_SETTINGS_ID = 'app-settings:shared'
+const EPOCH = new Date(0).toISOString()
+
+function appSettingsRecord(settings: Settings, updatedAt = EPOCH): AppSettingsRecord {
+  return {
+    id: APP_SETTINGS_ID,
+    autoSync: settings.autoSync,
+    moneyInputMultiplier: settings.moneyInputMultiplier,
+    moneyInputCurrencyCode: settings.moneyInputCurrencyCode,
+    updatedAt,
+  }
+}
 
 const emptyTables = (): Tables => ({
   accounts: [],
@@ -42,6 +55,7 @@ const emptyTables = (): Tables => ({
   assetCategories: [],
   assets: [],
   assetSnapshots: [],
+  appSettings: [],
 })
 
 const emptyDirty = (): Record<TableName, string[]> =>
@@ -60,6 +74,17 @@ function load(): State {
       const saved = JSON.parse(raw)
       const tables: Tables = { ...base.tables, ...saved.tables }
       const dirty = { ...base.dirty, ...saved.dirty }
+      const settings = { ...base.settings, ...saved.settings }
+      if (!tables.appSettings.some((row) => row.id === APP_SETTINGS_ID)) {
+        tables.appSettings = [...tables.appSettings, appSettingsRecord(settings)]
+        dirty.appSettings = Array.from(new Set([...dirty.appSettings, APP_SETTINGS_ID]))
+      }
+      const shared = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
+      if (shared) {
+        settings.autoSync = shared.autoSync
+        settings.moneyInputMultiplier = shared.moneyInputMultiplier
+        settings.moneyInputCurrencyCode = shared.moneyInputCurrencyCode
+      }
       // Migration: state saved before "Nguồn tiền" existed has no accounts table.
       if (!saved.tables?.accounts?.length) {
         const now = new Date(0).toISOString()
@@ -75,7 +100,7 @@ function load(): State {
       return {
         tables,
         dirty,
-        settings: { ...base.settings, ...saved.settings },
+        settings,
         sync: { ...base.sync, lastSyncAt: saved.lastSyncAt ?? null },
       }
     }
@@ -88,8 +113,10 @@ function load(): State {
   base.dirty.accounts = base.tables.accounts.map((a) => a.id)
   base.tables.categories = DEFAULT_CATEGORIES.map((c) => ({ ...c, updatedAt: now }))
   base.tables.assetCategories = DEFAULT_ASSET_CATEGORIES.map((c) => ({ ...c, updatedAt: now }))
+  base.tables.appSettings = [appSettingsRecord(base.settings, now)]
   base.dirty.categories = base.tables.categories.map((c) => c.id)
   base.dirty.assetCategories = base.tables.assetCategories.map((c) => c.id)
+  base.dirty.appSettings = [APP_SETTINGS_ID]
   return base
 }
 
@@ -202,13 +229,24 @@ export function importTables(incoming: Partial<Tables>): number {
     ;(tables as unknown as Record<string, unknown[]>)[t] = Array.from(byId.values())
     dirty[t] = Array.from(new Set([...dirty[t], ...ids]))
   }
-  setState({ ...state, tables, dirty })
+  const importedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
+  const settings = importedSettings
+    ? { ...state.settings, autoSync: importedSettings.autoSync, moneyInputMultiplier: importedSettings.moneyInputMultiplier, moneyInputCurrencyCode: importedSettings.moneyInputCurrencyCode }
+    : state.settings
+  setState({ ...state, tables, dirty, settings })
   scheduleSync()
   return applied
 }
 
 export function updateSettings(patch: Partial<Settings>) {
-  setState({ ...state, settings: { ...state.settings, ...patch } })
+  const settings = { ...state.settings, ...patch }
+  setState({ ...state, settings })
+  const shared = state.tables.appSettings.find((row) => row.id === APP_SETTINGS_ID)
+  const sharedChanged =
+    ('autoSync' in patch && patch.autoSync !== shared?.autoSync) ||
+    ('moneyInputMultiplier' in patch && patch.moneyInputMultiplier !== shared?.moneyInputMultiplier) ||
+    ('moneyInputCurrencyCode' in patch && patch.moneyInputCurrencyCode !== shared?.moneyInputCurrencyCode)
+  if (sharedChanged) upsert('appSettings', { ...appSettingsRecord(settings, new Date().toISOString()), deleted: false })
 }
 
 // ---------------- sync ----------------
@@ -241,13 +279,18 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
   // Sheets return numbers as numbers but may give '' for empty cells and
   // booleans as TRUE/FALSE strings.
   const out: Record<string, unknown> = { ...row }
-  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentValue', 'value', 'openingBalance']) {
+  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentValue', 'value', 'openingBalance', 'moneyInputMultiplier']) {
     if (k in out) out[k] = Number(out[k]) || 0
   }
   const toBool = (v: unknown) => v === true || v === 'TRUE' || v === 'true'
   out.deleted = toBool(out.deleted)
+  if (table === 'appSettings') {
+    out.autoSync = 'autoSync' in out ? toBool(out.autoSync) : true
+    out.moneyInputMultiplier = Number(out.moneyInputMultiplier) || 1
+    out.moneyInputCurrencyCode = String(out.moneyInputCurrencyCode || 'VND')
+  }
   if (table === 'accounts' || 'archived' in out) out.archived = toBool(out.archived)
-  for (const k of ['id', 'updatedAt', 'date', 'name', 'note', 'categoryId', 'parentId', 'assetId', 'unit', 'color', 'icon', 'type', 'kind', 'accountId', 'toAccountId']) {
+  for (const k of ['id', 'updatedAt', 'date', 'name', 'note', 'categoryId', 'parentId', 'assetId', 'unit', 'color', 'icon', 'type', 'kind', 'accountId', 'toAccountId', 'moneyInputCurrencyCode']) {
     if (k in out) out[k] = out[k] == null ? '' : String(out[k])
   }
   if (table === 'transactions') {
@@ -315,10 +358,15 @@ async function doSync() {
         return !cur || pushedVersions.get(`${t}:${id}`) !== cur.updatedAt
       })
     }
+    const sharedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
+    const settings = sharedSettings
+      ? { ...state.settings, autoSync: sharedSettings.autoSync, moneyInputMultiplier: sharedSettings.moneyInputMultiplier, moneyInputCurrencyCode: sharedSettings.moneyInputCurrencyCode }
+      : state.settings
     setState({
       ...state,
       tables,
       dirty,
+      settings,
       sync: { status: 'idle', lastSyncAt: res.serverTime, error: null },
     })
   } catch (e) {
