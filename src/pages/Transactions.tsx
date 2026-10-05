@@ -201,7 +201,7 @@ export default function Transactions() {
         type="button"
         onClick={openNew}
         aria-label="Thêm giao dịch"
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl leading-none text-white shadow-lg hover:bg-emerald-700 sm:hidden"
+        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl leading-none text-white shadow-lg hover:bg-emerald-700 sm:hidden"
       >
         +
       </button>

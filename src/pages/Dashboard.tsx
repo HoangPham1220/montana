@@ -9,6 +9,7 @@ import { useTable } from '../lib/store'
 import { useAccountBalances } from '../lib/accounts'
 import { DEFAULT_ACCOUNT_ID } from '../lib/defaults'
 import { categoryLabel, categorySpend, rootCategory } from '../lib/categoryTree'
+import TransactionForm from '../components/expenses/TransactionForm'
 
 export default function Dashboard() {
   const categories = useTable('categories')
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const { accounts, total: cashTotal } = useAccountBalances()
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
   const [month, setMonth] = useState(currentMonth)
+  const [formOpen, setFormOpen] = useState(false)
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
@@ -84,28 +86,30 @@ export default function Dashboard() {
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           Chưa có dữ liệu nào. Hãy thêm giao dịch đầu tiên, hoặc kết nối Google Sheet để tải dữ liệu đã lưu về máy.
         </p>
-        <div className="mt-5 flex justify-center gap-2">
-          <Link to="/transactions"><Button>Thêm giao dịch đầu tiên</Button></Link>
+        <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+          <Button onClick={() => setFormOpen(true)}>Thêm giao dịch đầu tiên</Button>
           <Link to="/settings"><Button variant="secondary">Kết nối Google Sheet</Button></Link>
         </div>
+        <TransactionForm open={formOpen} editing={null} categories={categories} onClose={() => setFormOpen(false)} />
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold">Tổng quan</h1>
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 items-center justify-between gap-1 sm:justify-end">
           <Button variant="secondary" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Tháng trước">‹</Button>
           <button
             onClick={() => setMonth(currentMonth())}
-            className="min-w-32 rounded-lg px-2 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="min-w-28 flex-1 rounded-lg px-2 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 sm:flex-none"
             title="Về tháng hiện tại"
           >
             {monthLabel(month)}
           </button>
           <Button variant="secondary" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Tháng sau">›</Button>
+          <Button className="ml-2 shrink-0" onClick={() => setFormOpen(true)}><span aria-hidden="true">+</span><span className="hidden min-[380px]:inline">Thêm giao dịch</span><span className="min-[380px]:hidden">Thêm</span></Button>
         </div>
       </div>
 
@@ -139,11 +143,11 @@ export default function Dashboard() {
               <SpendDonut data={slices} total={expense} />
               <ul className="mt-3 space-y-1.5">
                 {slices.slice(0, 5).map((s) => (
-                  <li key={s.id} className="flex items-center gap-2 text-sm">
+                  <li key={s.id} className="flex min-w-0 items-center gap-2 text-sm">
                     <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
                     <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                    <span className="text-slate-500">{formatPercent((s.value / expense) * 100)}</span>
-                    <span className="w-28 text-right font-medium">{formatVND(s.value)}</span>
+                    <span className="shrink-0 text-xs text-slate-500 sm:text-sm">{formatPercent((s.value / expense) * 100)}</span>
+                    <span className="shrink-0 text-right text-xs font-medium sm:w-28 sm:text-sm">{formatVND(s.value)}</span>
                   </li>
                 ))}
               </ul>
@@ -191,13 +195,13 @@ export default function Dashboard() {
                 ? `Chuyển tiền: ${accountById.get(t.accountId || DEFAULT_ACCOUNT_ID)?.name ?? 'Không rõ'} → ${accountById.get(t.toAccountId)?.name ?? 'Không rõ'}`
                 : t.note || categoryLabel(c, categories)
               return (
-                <li key={t.id} className="flex items-center gap-3 py-2 text-sm">
+                <li key={t.id} className="flex min-w-0 items-center gap-2 py-2 text-sm sm:gap-3">
                   <span className="text-xl">{transfer ? '🔁' : (c?.icon ?? '❔')}</span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{title}</div>
                     <div className="text-xs text-slate-500">{formatDate(t.date)}{transfer ? (t.note ? ` · ${t.note}` : '') : ` · ${categoryLabel(c, categories)}`}</div>
                   </div>
-                  <span className={`font-semibold ${transfer ? 'text-slate-500' : t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <span className={`max-w-[42%] shrink-0 truncate text-right text-xs font-semibold sm:text-sm ${transfer ? 'text-slate-500' : t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {transfer ? '' : t.type === 'income' ? '+' : '-'}{formatVND(t.amount)}
                   </span>
                 </li>
@@ -206,6 +210,7 @@ export default function Dashboard() {
           </ul>
         )}
       </Card>
+      <TransactionForm open={formOpen} editing={null} categories={categories} onClose={() => setFormOpen(false)} />
     </div>
   )
 }

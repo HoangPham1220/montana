@@ -80,15 +80,15 @@ export default function App() {
             Hướng dẫn
           </NavLink>
         </aside>
-        <div className="flex min-w-0 flex-1 flex-col pb-20 sm:pb-0">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-            <span className="font-bold text-emerald-600 sm:invisible">Montana</span>
-            <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col pb-24 sm:pb-0">
+          <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/90 px-3 py-3 backdrop-blur sm:px-4 dark:border-slate-800 dark:bg-slate-950/90">
+            <span className="shrink-0 font-bold text-emerald-600 sm:invisible">Montana</span>
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <SyncBadge />
               <NavLink to="/guide" className="text-lg sm:hidden" aria-label="Hướng dẫn">❓</NavLink>
             </div>
           </header>
-          <main className="flex-1 p-4">
+          <main className="min-w-0 flex-1 p-3 sm:p-4">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/transactions" element={<Transactions />} />
@@ -100,7 +100,7 @@ export default function App() {
             </Routes>
           </main>
         </div>
-        <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-slate-200 bg-white sm:hidden dark:border-slate-800 dark:bg-slate-900">
+        <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-slate-200 bg-white pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:hidden dark:border-slate-800 dark:bg-slate-900">
           {NAV.filter((n) => n.mobile !== false).map((n) => (
             <NavLink
               key={n.to}
