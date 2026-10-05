@@ -338,6 +338,13 @@ async function doSync() {
     if (!res.ok) throw new Error(res.error)
     if (!res.data) throw new Error('Phản hồi thiếu dữ liệu')
 
+    // Older Apps Script deployments silently ignore tables they don't know.
+    // Keep appSettings dirty and surface the cause instead of reporting a
+    // successful sync that discarded the shared preferences.
+    if (changes.appSettings?.length && !res.data.appSettings) {
+      throw new Error('Apps Script chưa được cập nhật để đồng bộ cấu hình. Hãy cập nhật Code.gs và triển khai phiên bản mới.')
+    }
+
     // Merge server data with local state (local may have changed mid-flight).
     const tables = emptyTables()
     const dirty = emptyDirty()
