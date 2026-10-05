@@ -10,6 +10,7 @@ import { Button, Card, EmptyState, Input, Select } from '../components/ui'
 import MonthPicker from '../components/expenses/MonthPicker'
 import TransactionForm from '../components/expenses/TransactionForm'
 import CategoryDot from '../components/expenses/CategoryDot'
+import FloatingActionMenu from '../components/ui/FloatingActionMenu'
 
 
 export default function Transactions() {
@@ -24,6 +25,7 @@ export default function Transactions() {
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
+  const [newType, setNewType] = useState<TransactionType>('expense')
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const accById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
@@ -69,8 +71,9 @@ export default function Transactions() {
     [categories, typeFilter],
   )
 
-  const openNew = () => {
+  const openNew = (type: TransactionType = 'expense') => {
     setEditing(null)
+    setNewType(type)
     setFormOpen(true)
   }
   const openEdit = (t: Transaction) => {
@@ -80,14 +83,16 @@ export default function Transactions() {
 
   return (
     <div className="space-y-4 pb-20">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Thu chi</h1>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Thu chi</h1>
           <Link to="/categories" className="text-sm text-emerald-600 hover:underline dark:text-emerald-400">
             Danh mục
           </Link>
+        </div>
+        <div className="flex items-center justify-center gap-3 sm:justify-end">
           <MonthPicker value={month} onChange={setMonth} />
-          <Button onClick={openNew} className="hidden sm:inline-flex">
+          <Button onClick={() => openNew()} className="hidden sm:inline-flex">
             + Thêm
           </Button>
         </div>
@@ -197,19 +202,20 @@ export default function Transactions() {
         ))
       )}
 
-      <button
-        type="button"
-        onClick={openNew}
-        aria-label="Thêm giao dịch"
-        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl leading-none text-white shadow-lg hover:bg-emerald-700 sm:hidden"
-      >
-        +
-      </button>
+      <FloatingActionMenu
+        label="Thêm giao dịch"
+        actions={[
+          { label: 'Thêm khoản chi', description: 'Ghi lại một khoản chi tiêu', icon: '↗', onSelect: () => openNew('expense') },
+          { label: 'Thêm khoản thu', description: 'Ghi lại tiền lương, thưởng…', icon: '↙', onSelect: () => openNew('income') },
+          { label: 'Chuyển tiền', description: 'Chuyển giữa các nguồn tiền', icon: '⇄', onSelect: () => openNew('transfer') },
+        ]}
+      />
 
       <TransactionForm
         open={formOpen}
         editing={editing}
         categories={categories}
+        defaultType={newType}
         defaultDate={monthOf(today()) === month ? today() : `${month}-01`}
         defaultAccountId={accountFilter || undefined}
         onClose={() => setFormOpen(false)}

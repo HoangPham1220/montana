@@ -10,6 +10,8 @@ import { useAccountBalances } from '../lib/accounts'
 import { DEFAULT_ACCOUNT_ID } from '../lib/defaults'
 import { categoryLabel, categorySpend, rootCategory } from '../lib/categoryTree'
 import TransactionForm from '../components/expenses/TransactionForm'
+import FloatingActionMenu from '../components/ui/FloatingActionMenu'
+import type { TransactionType } from '../lib/types'
 
 export default function Dashboard() {
   const categories = useTable('categories')
@@ -19,6 +21,13 @@ export default function Dashboard() {
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
   const [month, setMonth] = useState(currentMonth)
   const [formOpen, setFormOpen] = useState(false)
+  const [newType, setNewType] = useState<TransactionType>('expense')
+  const openNewTransaction = (type: TransactionType) => { setNewType(type); setFormOpen(true) }
+  const quickActions = [
+    { label: 'Thêm khoản chi', description: 'Ghi lại một khoản chi tiêu', icon: '↗', onSelect: () => openNewTransaction('expense') },
+    { label: 'Thêm khoản thu', description: 'Ghi lại tiền lương, thưởng…', icon: '↙', onSelect: () => openNewTransaction('income') },
+    { label: 'Chuyển tiền', description: 'Chuyển giữa các nguồn tiền', icon: '⇄', onSelect: () => openNewTransaction('transfer') },
+  ]
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
@@ -86,11 +95,11 @@ export default function Dashboard() {
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           Chưa có dữ liệu nào. Hãy thêm giao dịch đầu tiên, hoặc kết nối Google Sheet để tải dữ liệu đã lưu về máy.
         </p>
-        <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
-          <Button onClick={() => setFormOpen(true)}>Thêm giao dịch đầu tiên</Button>
+        <div className="mt-5 flex justify-center">
           <Link to="/settings"><Button variant="secondary">Kết nối Google Sheet</Button></Link>
         </div>
-        <TransactionForm open={formOpen} editing={null} categories={categories} onClose={() => setFormOpen(false)} />
+        <FloatingActionMenu actions={quickActions} label="Thêm giao dịch" />
+        <TransactionForm open={formOpen} editing={null} categories={categories} defaultType={newType} onClose={() => setFormOpen(false)} />
       </div>
     )
   }
@@ -109,7 +118,7 @@ export default function Dashboard() {
             {monthLabel(month)}
           </button>
           <Button variant="secondary" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Tháng sau">›</Button>
-          <Button className="ml-2 shrink-0" onClick={() => setFormOpen(true)}><span aria-hidden="true">+</span><span className="hidden min-[380px]:inline">Thêm giao dịch</span><span className="min-[380px]:hidden">Thêm</span></Button>
+          <Button className="ml-2 hidden shrink-0 sm:inline-flex" onClick={() => openNewTransaction('expense')}>+ Thêm giao dịch</Button>
         </div>
       </div>
 
@@ -210,7 +219,8 @@ export default function Dashboard() {
           </ul>
         )}
       </Card>
-      <TransactionForm open={formOpen} editing={null} categories={categories} onClose={() => setFormOpen(false)} />
+      <FloatingActionMenu actions={quickActions} label="Thêm giao dịch" />
+      <TransactionForm open={formOpen} editing={null} categories={categories} defaultType={newType} onClose={() => setFormOpen(false)} />
     </div>
   )
 }

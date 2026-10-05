@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AccountCard from '../components/accounts/AccountCard'
 import AccountForm from '../components/accounts/AccountForm'
+import FloatingActionMenu from '../components/ui/FloatingActionMenu'
 import TransactionForm from '../components/expenses/TransactionForm'
 import { Button, Card, EmptyState } from '../components/ui'
 import { ACCOUNT_KIND_LABEL, useAccountBalances } from '../lib/accounts'
@@ -43,8 +44,12 @@ export default function Accounts() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Nguồn tiền</h1>
-        <Button onClick={() => setForm({ editing: null })}>+ Thêm nguồn tiền</Button>
+        <Button onClick={() => setForm({ editing: null })} className="hidden sm:inline-flex">+ Thêm nguồn tiền</Button>
       </div>
+      <FloatingActionMenu
+        label="Thêm nguồn tiền"
+        actions={[{ label: 'Thêm nguồn tiền', description: 'Tiền mặt, ngân hàng, ví hoặc tín dụng', icon: '＋', onSelect: () => setForm({ editing: null }) }]}
+      />
 
       <Card>
         <div className="text-xs text-slate-500">Tổng số dư</div>
