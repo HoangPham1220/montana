@@ -25,7 +25,7 @@ export default function AssetFormModal({
     setUnit(asset?.unit ?? '')
     setCostBasis(asset?.costBasis ?? 0)
     setCurrentValue(asset?.currentValue ?? 0)
-    setPrice(asset?.currentPrice ?? (asset && asset.quantity > 0 ? Math.round(asset.currentValue / asset.quantity) : 0))
+    setPrice(asset?.currentPrice ?? (asset && asset.quantity > 0 ? Math.round((asset.currentValue / asset.quantity) * 100) / 100 : 0))
     setNote(asset?.note ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, asset])
@@ -85,7 +85,7 @@ export default function AssetFormModal({
           <MoneyInput value={costBasis} onChange={setCostBasis} placeholder="0" />
         </Field>
         <Field label="Giá hiện tại / đơn vị (tuỳ chọn, tự tính giá trị = giá × số lượng)">
-          <MoneyInput value={price} onChange={onPrice} placeholder="0" />
+          <MoneyInput value={price} onChange={onPrice} precision={2} placeholder="0" />
         </Field>
         <Field label="Giá trị hiện tại (VND)">
           <MoneyInput value={currentValue} onChange={setCurrentValue} placeholder="0" />

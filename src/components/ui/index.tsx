@@ -54,14 +54,17 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
 }
 
 /** Money input: shows grouped digits, accepts shorthand like 50k, 1.5tr. */
-export function MoneyInput({ value, onChange, ...rest }: { value: number; onChange: (n: number) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+export function MoneyInput({ value, onChange, precision = 0, ...rest }: { value: number; onChange: (n: number) => void; precision?: number } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
   const storedMultiplier = useStore((s) => s.settings.moneyInputMultiplier)
   const currencyCode = useStore((s) => s.settings.moneyInputCurrencyCode)
   const multiplier = Number.isFinite(storedMultiplier) && storedMultiplier > 0 ? storedMultiplier : 1
   const inputValue = value / multiplier
-  const [text, setText] = useState(inputValue ? formatNumber(inputValue) : '')
+  const formatValue = (n: number) => precision > 0
+    ? new Intl.NumberFormat('vi-VN', { maximumFractionDigits: precision }).format(n || 0)
+    : formatNumber(n)
+  const [text, setText] = useState(inputValue ? formatValue(inputValue) : '')
   useEffect(() => {
-    setText((t) => (parseMoney(t) === inputValue ? t : inputValue ? formatNumber(inputValue) : ''))
+    setText((t) => (parseMoney(t, precision) === inputValue ? t : inputValue ? formatValue(inputValue) : ''))
   }, [inputValue])
   const suffix = multiplier === 1 ? '' : `${currencyCode} × ${formatNumber(multiplier)}`
   const placeholder = multiplier === 1 ? rest.placeholder : 'VD: 20'
@@ -75,9 +78,9 @@ export function MoneyInput({ value, onChange, ...rest }: { value: number; onChan
         value={text}
         onChange={(e) => {
           setText(e.target.value)
-          onChange(Math.round(parseMoney(e.target.value) * multiplier))
+          onChange(parseMoney(e.target.value, precision) * multiplier)
         }}
-        onBlur={() => setText(inputValue ? formatNumber(inputValue) : '')}
+        onBlur={() => setText(inputValue ? formatValue(inputValue) : '')}
       />
       {suffix && <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[10px] text-slate-400">{suffix}</span>}
     </span>
