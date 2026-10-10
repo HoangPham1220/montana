@@ -75,7 +75,7 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 | `categories` | id, name, type, parentId, color, icon, budget, updatedAt, deleted |
 | `transactions` | id, date, type, amount, categoryId, accountId, toAccountId, note, updatedAt, deleted |
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |
-| `assets` | id, name, categoryId, quantity, unit, costBasis, currentValue, note, updatedAt, deleted |
+| `assets` | id, name, categoryId, quantity, unit, costBasis, currentPrice, currentValue, note, updatedAt, deleted |
 | `assetSnapshots` | id, assetId, date, value, updatedAt, deleted |
 | `appSettings` | id, autoSync, moneyInputMultiplier, moneyInputCurrencyCode, updatedAt, deleted |
 

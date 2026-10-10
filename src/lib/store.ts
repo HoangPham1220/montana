@@ -279,7 +279,7 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
   // Sheets return numbers as numbers but may give '' for empty cells and
   // booleans as TRUE/FALSE strings.
   const out: Record<string, unknown> = { ...row }
-  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentValue', 'value', 'openingBalance', 'moneyInputMultiplier']) {
+  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'moneyInputMultiplier']) {
     if (k in out) out[k] = Number(out[k]) || 0
   }
   const toBool = (v: unknown) => v === true || v === 'TRUE' || v === 'true'

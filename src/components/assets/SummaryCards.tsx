@@ -15,7 +15,7 @@ export default function SummaryCards({ value, invested, cost }: { value: number;
       <Card title="Vốn đầu tư">
         <p className="text-2xl font-bold">{formatVND(cost)}</p>
       </Card>
-      <Card title="Lãi/lỗ đầu tư">
+      <Card title="Tỷ giá">
         <p className={`text-2xl font-bold ${color}`}>{sign}{formatVND(pl)}</p>
         <p className={`text-sm ${color}`}>{sign}{formatPercent(pct, 2)}</p>
       </Card>

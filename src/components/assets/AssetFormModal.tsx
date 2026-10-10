@@ -25,22 +25,25 @@ export default function AssetFormModal({
     setUnit(asset?.unit ?? '')
     setCostBasis(asset?.costBasis ?? 0)
     setCurrentValue(asset?.currentValue ?? 0)
-    setPrice(0)
+    setPrice(asset?.currentPrice ?? 0)
     setNote(asset?.note ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, asset])
 
   const qty = Number(quantity.replace(',', '.')) || 0
 
+  useEffect(() => {
+    if (price > 0) setCurrentValue(Math.round(price * qty))
+  }, [price, qty])
+
   const onPrice = (p: number) => {
     setPrice(p)
-    if (p > 0) setCurrentValue(Math.round(p * qty))
   }
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    saveAsset({ ...(asset ?? {}), id: asset?.id, name: name.trim(), categoryId, quantity: qty, unit: unit.trim(), costBasis, currentValue, note: note.trim() })
+    saveAsset({ ...(asset ?? {}), id: asset?.id, name: name.trim(), categoryId, quantity: qty, unit: unit.trim(), costBasis, currentPrice: price || undefined, currentValue, note: note.trim() })
     onClose()
   }
 

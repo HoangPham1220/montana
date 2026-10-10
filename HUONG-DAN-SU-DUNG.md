@@ -124,7 +124,7 @@ Vào **Tài sản**. Ở trên cùng có ba thẻ: **Tổng tài sản** (gồm 
 - **Tên tài sản** (ví dụ Vàng SJC, VNM) và **Danh mục**.
 - **Số lượng** và **Đơn vị** (ví dụ 5 chỉ, 100 cổ phiếu).
 - **Vốn đã bỏ ra (VND):** số tiền bạn đã đầu tư, dùng để tính lãi/lỗ.
-- **Giá hiện tại / đơn vị** (tuỳ chọn): nhập giá một đơn vị, app tự tính **Giá trị hiện tại** = giá x số lượng.
+- **Giá hiện tại / đơn vị** (tuỳ chọn): nhập giá một đơn vị, app tự tính **Giá trị hiện tại** = giá x số lượng và lưu lại giá này để lần sau mở tài sản vẫn thấy.
 - **Giá trị hiện tại (VND):** tổng giá trị thị trường bây giờ. Có thể nhập tay trực tiếp.
 - **Ghi chú.**
 

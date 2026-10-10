@@ -65,6 +65,8 @@ export interface Asset extends BaseRecord {
   unit: string
   /** Total money put in (VND). */
   costBasis: number
+  /** Current market price per unit (VND), optional. */
+  currentPrice?: number
   /** Current total market value (VND). */
   currentValue: number
   note: string
@@ -113,7 +115,7 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
   transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
-  assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentValue', 'note', 'updatedAt', 'deleted'],
+  assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
   appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted'],
 }
