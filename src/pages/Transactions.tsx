@@ -165,6 +165,7 @@ export default function Transactions() {
               {g.items.map((t) => {
                 const c = catById.get(t.categoryId)
                 const isTransfer = t.type === 'transfer'
+                const isAdjustment = t.type === 'adjustment'
                 const delta = accountFilter ? accountDelta(t, accountFilter) : 0
                 let amountText: string
                 let amountCls: string
@@ -172,7 +173,7 @@ export default function Transactions() {
                   amountText = formatVND(t.amount)
                   amountCls = 'text-sky-600 dark:text-sky-400'
                 } else {
-                  const v = isTransfer ? delta : t.type === 'income' ? t.amount : -t.amount
+                  const v = isTransfer ? delta : isAdjustment ? t.amount : t.type === 'income' ? t.amount : -t.amount
                   amountText = (v > 0 ? '+' : v < 0 ? '-' : '') + formatVND(Math.abs(v))
                   amountCls = v < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                   if (v === 0) amountCls = 'text-slate-500'
@@ -184,13 +185,13 @@ export default function Transactions() {
                       onClick={() => openEdit(t)}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
                     >
-                      <CategoryDot icon={isTransfer ? '🔁' : (c?.icon ?? '❓')} color={isTransfer ? '#0ea5e9' : (c?.color ?? '#94a3b8')} />
+                      <CategoryDot icon={isTransfer ? '🔁' : isAdjustment ? '↕️' : (c?.icon ?? '❓')} color={isTransfer ? '#0ea5e9' : isAdjustment ? '#64748b' : (c?.color ?? '#94a3b8')} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">
-                          {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : categoryLabel(c, categories)}
+                          {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : isAdjustment ? t.note || 'Điều chỉnh số dư' : categoryLabel(c, categories)}
                         </span>
                         {!isTransfer && <span className="block truncate text-xs text-slate-400">{accLabel(t.accountId)}</span>}
-                        {t.note && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{t.note}</span>}
+                        {t.note && !isAdjustment && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{t.note}</span>}
                       </span>
                       <span className={`shrink-0 text-sm font-semibold ${amountCls}`}>{amountText}</span>
                     </button>

@@ -37,7 +37,7 @@ export default function Dashboard() {
     let income = 0
     let expense = 0
     for (const t of transactions) {
-      if (t.type === 'transfer') continue
+      if (t.type === 'transfer' || t.type === 'adjustment') continue
       const m = monthOf(t.date)
       const p = perMonth.get(m) ?? { income: 0, expense: 0 }
       p[t.type] += t.amount
@@ -200,18 +200,20 @@ export default function Dashboard() {
             {recent.map((t) => {
               const c = catById.get(t.categoryId)
               const transfer = t.type === 'transfer'
+              const adjustment = t.type === 'adjustment'
               const title = transfer
                 ? `Chuyển tiền: ${accountById.get(t.accountId || DEFAULT_ACCOUNT_ID)?.name ?? 'Không rõ'} → ${accountById.get(t.toAccountId)?.name ?? 'Không rõ'}`
-                : t.note || categoryLabel(c, categories)
+                : adjustment ? t.note || 'Điều chỉnh số dư' : t.note || categoryLabel(c, categories)
+              const amountColor = transfer ? 'text-slate-500' : adjustment ? (t.amount < 0 ? 'text-rose-600' : 'text-emerald-600') : t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
               return (
                 <li key={t.id} className="flex min-w-0 items-center gap-2 py-2 text-sm sm:gap-3">
-                  <span className="text-xl">{transfer ? '🔁' : (c?.icon ?? '❔')}</span>
+                  <span className="text-xl">{transfer ? '🔁' : adjustment ? '↕️' : (c?.icon ?? '❔')}</span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{title}</div>
-                    <div className="text-xs text-slate-500">{formatDate(t.date)}{transfer ? (t.note ? ` · ${t.note}` : '') : ` · ${categoryLabel(c, categories)}`}</div>
+                    <div className="text-xs text-slate-500">{formatDate(t.date)}{transfer ? (t.note ? ` · ${t.note}` : '') : adjustment ? ' · Điều chỉnh số dư' : ` · ${categoryLabel(c, categories)}`}</div>
                   </div>
-                  <span className={`max-w-[42%] shrink-0 truncate text-right text-xs font-semibold sm:text-sm ${transfer ? 'text-slate-500' : t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {transfer ? '' : t.type === 'income' ? '+' : '-'}{formatVND(t.amount)}
+                  <span className={`max-w-[42%] shrink-0 truncate text-right text-xs font-semibold sm:text-sm ${amountColor}`}>
+                    {transfer ? '' : adjustment ? `${t.amount > 0 ? '+' : t.amount < 0 ? '-' : ''}${formatVND(Math.abs(t.amount))}` : `${t.type === 'income' ? '+' : '-'}${formatVND(t.amount)}`}
                   </span>
                 </li>
               )

@@ -31,14 +31,14 @@ export function exportTransactionsCsv() {
   const cats = new Map(tables.categories.map((c) => [c.id, c]))
   const accs = new Map(tables.accounts.map((a) => [a.id, a.name]))
   const accName = (id: string) => accs.get(id || DEFAULT_ACCOUNT_ID) ?? ''
-  const typeLabel = { expense: 'Chi', income: 'Thu', transfer: 'Chuyển' } as const
+  const typeLabel = { expense: 'Chi', income: 'Thu', transfer: 'Chuyển', adjustment: 'Điều chỉnh số dư' } as const
   const rows = tables.transactions
     .filter((t) => !t.deleted)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((t) => [
       t.date,
       typeLabel[t.type] ?? 'Chi',
-      categoryLabel(cats.get(t.categoryId), tables.categories),
+      t.type === 'adjustment' ? '' : categoryLabel(cats.get(t.categoryId), tables.categories),
       accName(t.accountId),
       t.type === 'transfer' ? accName(t.toAccountId) : '',
       t.amount,

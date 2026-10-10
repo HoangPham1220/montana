@@ -19,9 +19,9 @@ export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
 
 const KIND_ORDER: AccountKind[] = ['cash', 'bank', 'ewallet', 'credit']
 
-/** True for income/expense rows (i.e. not a transfer) — use in spending/income reports. */
+/** True only for real income/expense rows; transfers and balance adjustments are excluded from reports. */
 export function isIncomeOrExpense(t: Transaction): boolean {
-  return t.type !== 'transfer'
+  return t.type === 'income' || t.type === 'expense'
 }
 
 /** Sum of balances over non-archived accounts. */

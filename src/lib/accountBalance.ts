@@ -8,6 +8,7 @@ export function txAccountId(t: Transaction): string {
 export function accountDelta(t: Transaction, accountId: string): number {
   if (t.type === 'income') return txAccountId(t) === accountId ? t.amount : 0
   if (t.type === 'expense') return txAccountId(t) === accountId ? -t.amount : 0
+  if (t.type === 'adjustment') return txAccountId(t) === accountId ? t.amount : 0
   const from = txAccountId(t)
   const to = t.toAccountId
   if (from === to) return 0
@@ -25,7 +26,7 @@ export function computeBalances(accounts: Account[], txs: Transaction[], asOf?: 
       if (bal.has(from)) bal.set(from, bal.get(from)! - t.amount)
       if (bal.has(t.toAccountId)) bal.set(t.toAccountId, bal.get(t.toAccountId)! + t.amount)
     } else if (bal.has(from)) {
-      bal.set(from, bal.get(from)! + (t.type === 'income' ? t.amount : -t.amount))
+      bal.set(from, bal.get(from)! + (t.type === 'income' || t.type === 'adjustment' ? t.amount : -t.amount))
     }
   }
   return bal

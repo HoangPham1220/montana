@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ACCOUNT_KIND_LABEL } from '../../lib/accounts'
+import { ACCOUNT_KIND_LABEL, saveTransaction } from '../../lib/accounts'
 import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
+import { today } from '../../lib/format'
 import { remove, upsert, useTable } from '../../lib/store'
 import type { Account, AccountKind } from '../../lib/types'
 import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
@@ -31,6 +32,7 @@ function Body({ editing, onClose }: Omit<Props, 'open'>) {
   const [icon, setIcon] = useState(editing?.icon ?? KIND_ICON.bank)
   const [color, setColor] = useState(editing?.color ?? COLOR_SWATCHES[0])
   const [opening, setOpening] = useState(Math.abs(editing?.openingBalance ?? 0))
+  const [currentBalance, setCurrentBalance] = useState(editing?.currentBalance ?? editing?.openingBalance ?? 0)
   const [debt, setDebt] = useState((editing?.openingBalance ?? 0) < 0)
   const [archived, setArchived] = useState(editing?.archived ?? false)
   const [iconTouched, setIconTouched] = useState(!!editing)
@@ -48,6 +50,9 @@ function Body({ editing, onClose }: Omit<Props, 'open'>) {
   const save = () => {
     if (!name.trim()) return setError('Nhập tên nguồn tiền')
     const openingBalance = debt ? -opening : opening
+    const currentBeforeAdjustment = editing
+      ? (editing.currentBalance ?? editing.openingBalance) + openingBalance - editing.openingBalance
+      : openingBalance
     upsert('accounts', {
       id: editing?.id,
       name: name.trim(),
@@ -55,11 +60,21 @@ function Body({ editing, onClose }: Omit<Props, 'open'>) {
       icon: icon.trim() || KIND_ICON[kind],
       color,
       openingBalance,
-      currentBalance: editing
-        ? (editing.currentBalance ?? editing.openingBalance) + openingBalance - editing.openingBalance
-        : openingBalance,
+      currentBalance: currentBeforeAdjustment,
       archived,
     })
+    const difference = currentBalance - currentBeforeAdjustment
+    if (editing && difference !== 0) {
+      saveTransaction({
+        type: 'adjustment',
+        amount: difference,
+        categoryId: '',
+        accountId: editing.id,
+        toAccountId: '',
+        date: today(),
+        note: `Thay đổi số dư - ${name.trim()}`,
+      })
+    }
     onClose()
   }
 
@@ -124,6 +139,9 @@ function Body({ editing, onClose }: Omit<Props, 'open'>) {
       <Field label="Số dư ban đầu">
         <MoneyInput value={opening} onChange={setOpening} placeholder="0" />
       </Field>
+      {editing && <Field label="Số dư hiện tại">
+        <MoneyInput value={currentBalance} onChange={setCurrentBalance} placeholder="0" />
+      </Field>}
       {kind === 'credit' && <p className="text-xs text-slate-500">Nhập số âm nếu đang nợ, ví dụ -5tr (hoặc bật &quot;Đang nợ&quot; và nhập 5tr).</p>}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={debt} onChange={(e) => setDebt(e.target.checked)} className="h-4 w-4 accent-emerald-600" />

@@ -423,6 +423,7 @@ async function doSync() {
       settings,
       sync: { status: 'idle', lastSyncAt: res.serverTime, error: null },
     })
+    if (migratedAccountIds.length || reconciledAccountIds.length) scheduleSync()
   } catch (e) {
     setState({ ...state, sync: { ...state.sync, status: 'error', error: (e as Error).message } })
   }

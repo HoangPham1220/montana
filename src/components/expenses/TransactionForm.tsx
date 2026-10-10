@@ -106,6 +106,18 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
     }
   }
 
+  if (editing?.type === 'adjustment') {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-slate-600 dark:text-slate-300">{editing.note}</p>
+        <p className="text-sm">Thay đổi: {editing.amount > 0 ? '+' : ''}{formatVND(editing.amount)}</p>
+        <div className="flex justify-end">
+          <Button type="button" variant="danger" onClick={del}>Xoá điều chỉnh</Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <form
       className="space-y-3"

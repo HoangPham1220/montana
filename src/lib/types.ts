@@ -3,7 +3,7 @@
 
 export type TxType = 'expense' | 'income'
 /** Transaction kind: categories only use TxType; transactions may also be transfers. */
-export type TransactionType = TxType | 'transfer'
+export type TransactionType = TxType | 'transfer' | 'adjustment'
 
 interface BaseRecord {
   id: string
