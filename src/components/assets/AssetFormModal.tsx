@@ -25,19 +25,22 @@ export default function AssetFormModal({
     setUnit(asset?.unit ?? '')
     setCostBasis(asset?.costBasis ?? 0)
     setCurrentValue(asset?.currentValue ?? 0)
-    setPrice(asset?.currentPrice ?? 0)
+    setPrice(asset?.currentPrice ?? (asset && asset.quantity > 0 ? Math.round(asset.currentValue / asset.quantity) : 0))
     setNote(asset?.note ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, asset])
 
   const qty = Number(quantity.replace(',', '.')) || 0
 
-  useEffect(() => {
-    if (price > 0) setCurrentValue(Math.round(price * qty))
-  }, [price, qty])
-
   const onPrice = (p: number) => {
     setPrice(p)
+    if (p > 0) setCurrentValue(Math.round(p * qty))
+  }
+
+  const onQuantity = (value: string) => {
+    const nextQty = Number(value.replace(',', '.')) || 0
+    setQuantity(value)
+    if (price > 0) setCurrentValue(Math.round(price * nextQty))
   }
 
   const submit = (e: React.FormEvent) => {
@@ -71,7 +74,7 @@ export default function AssetFormModal({
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Số lượng">
-            <Input type="number" step="any" min="0" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <Input type="number" step="any" min="0" inputMode="decimal" value={quantity} onChange={(e) => onQuantity(e.target.value)} />
           </Field>
           <Field label="Đơn vị">
             <Input list="asset-units" value={unit} onChange={(e) => setUnit(e.target.value)} />
