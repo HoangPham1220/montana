@@ -10,7 +10,7 @@
 
 // Keep in sync with SHEET_COLUMNS in src/lib/types.ts
 var SHEET_COLUMNS = {
-  accounts: ['id', 'name', 'kind', 'openingBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
+  accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
   transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
@@ -19,7 +19,7 @@ var SHEET_COLUMNS = {
   appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted']
 };
 var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings'];
-var NUMBER_FIELDS = ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'moneyInputMultiplier'];
+var NUMBER_FIELDS = ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier'];
 var BOOLEAN_FIELDS = ['deleted', 'archived', 'autoSync'];
 var DATE_FIELDS = ['date']; // yyyy-MM-dd text; other text fields that hold Dates become ISO strings
 
@@ -152,6 +152,7 @@ function readTable_(table) {
 
 function fromCell_(field, v) {
   if (NUMBER_FIELDS.indexOf(field) >= 0) {
+    if (field === 'currentBalance' && (v == null || v === '')) return '';
     var n = Number(v);
     return isFinite(n) ? n : 0;
   }

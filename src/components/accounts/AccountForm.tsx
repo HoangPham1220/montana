@@ -47,13 +47,17 @@ function Body({ editing, onClose }: Omit<Props, 'open'>) {
 
   const save = () => {
     if (!name.trim()) return setError('Nhập tên nguồn tiền')
+    const openingBalance = debt ? -opening : opening
     upsert('accounts', {
       id: editing?.id,
       name: name.trim(),
       kind,
       icon: icon.trim() || KIND_ICON[kind],
       color,
-      openingBalance: debt ? -opening : opening,
+      openingBalance,
+      currentBalance: editing
+        ? (editing.currentBalance ?? editing.openingBalance) + openingBalance - editing.openingBalance
+        : openingBalance,
       archived,
     })
     onClose()

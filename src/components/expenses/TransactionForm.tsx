@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import { remove, upsert } from '../../lib/store'
 import { formatVND, today } from '../../lib/format'
 import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
-import { txAccountId, useAccountBalances } from '../../lib/accounts'
+import { deleteTransaction, saveTransaction, txAccountId, useAccountBalances } from '../../lib/accounts'
 import { isSelectableCategory } from '../../lib/categoryTree'
 import type { Account, Category, Transaction, TransactionType } from '../../lib/types'
 import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
@@ -81,7 +80,7 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       if (accountId === toAccountId) return setError('Nguồn tiền đi và đến phải khác nhau')
     } else if (!selected) return setError('Chọn danh mục')
     if (!date) return setError('Chọn ngày')
-    upsert('transactions', {
+    saveTransaction({
       id: editing?.id,
       type,
       amount,
@@ -102,7 +101,7 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
 
   const del = () => {
     if (editing && window.confirm('Xoá giao dịch này?')) {
-      remove('transactions', editing.id)
+      deleteTransaction(editing.id)
       onClose()
     }
   }

@@ -29,5 +29,5 @@ export const DEFAULT_ASSET_CATEGORIES: Seed<AssetCategory>[] = [
 export const DEFAULT_ACCOUNT_ID = 'acc-cash'
 
 export const DEFAULT_ACCOUNTS: Seed<Account>[] = [
-  { id: 'acc-cash', name: 'Tiền mặt', kind: 'cash', openingBalance: 0, color: '#16a34a', icon: '💵', archived: false },
+  { id: 'acc-cash', name: 'Tiền mặt', kind: 'cash', openingBalance: 0, currentBalance: 0, color: '#16a34a', icon: '💵', archived: false },
 ]

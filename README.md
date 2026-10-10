@@ -71,7 +71,7 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 
 | Tab | Các cột |
 |---|---|
-| `accounts` | id, name, kind, openingBalance, color, icon, archived, updatedAt, deleted |
+| `accounts` | id, name, kind, openingBalance, currentBalance, color, icon, archived, updatedAt, deleted |
 | `categories` | id, name, type, parentId, color, icon, budget, updatedAt, deleted |
 | `transactions` | id, date, type, amount, categoryId, accountId, toAccountId, note, updatedAt, deleted |
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |

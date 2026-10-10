@@ -11,6 +11,7 @@ import {
   type Tables,
 } from './types'
 import { DEFAULT_ACCOUNTS, DEFAULT_ASSET_CATEGORIES, DEFAULT_CATEGORIES } from './defaults'
+import { computeBalances } from './accountBalance'
 
 export interface Settings {
   apiUrl: string
@@ -97,6 +98,8 @@ function load(): State {
         accountId: t.accountId ?? '',
         toAccountId: t.toAccountId ?? '',
       }))
+      const migratedAccountIds = fillMissingAccountBalances(tables)
+      dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds]))
       return {
         tables,
         dirty,
@@ -229,6 +232,8 @@ export function importTables(incoming: Partial<Tables>): number {
     ;(tables as unknown as Record<string, unknown[]>)[t] = Array.from(byId.values())
     dirty[t] = Array.from(new Set([...dirty[t], ...ids]))
   }
+  const migratedAccountIds = fillMissingAccountBalances(tables)
+  dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds]))
   const importedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
   const settings = importedSettings
     ? { ...state.settings, autoSync: importedSettings.autoSync, moneyInputMultiplier: importedSettings.moneyInputMultiplier, moneyInputCurrencyCode: importedSettings.moneyInputCurrencyCode }
@@ -279,7 +284,8 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
   // Sheets return numbers as numbers but may give '' for empty cells and
   // booleans as TRUE/FALSE strings.
   const out: Record<string, unknown> = { ...row }
-  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'moneyInputMultiplier']) {
+  if (table === 'accounts' && (out.currentBalance == null || out.currentBalance === '')) delete out.currentBalance
+  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier']) {
     if (k in out) out[k] = Number(out[k]) || 0
   }
   const toBool = (v: unknown) => v === true || v === 'TRUE' || v === 'true'
@@ -302,6 +308,33 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
     out.date = String(out.date).slice(0, 10)
   }
   return out as unknown as RecordOf<TableName>
+}
+
+/** One-time migration for old local, imported, or Sheet account rows. */
+function fillMissingAccountBalances(tables: Tables): string[] {
+  const missing = tables.accounts.filter((a) => typeof a.currentBalance !== 'number')
+  if (!missing.length) return []
+  const calculated = computeBalances(tables.accounts, tables.transactions)
+  const ids = new Set(missing.map((a) => a.id))
+  const updatedAt = new Date().toISOString()
+  tables.accounts = tables.accounts.map((a) => ids.has(a.id)
+    ? { ...a, currentBalance: calculated.get(a.id) ?? a.openingBalance, updatedAt }
+    : a)
+  return [...ids]
+}
+
+/** Reconcile concurrent transaction changes received from another device. */
+function reconcileAccountBalances(tables: Tables): string[] {
+  const calculated = computeBalances(tables.accounts, tables.transactions)
+  const changed = new Set<string>()
+  const updatedAt = new Date().toISOString()
+  tables.accounts = tables.accounts.map((a) => {
+    const currentBalance = calculated.get(a.id) ?? a.openingBalance
+    if (a.currentBalance === currentBalance) return a
+    changed.add(a.id)
+    return { ...a, currentBalance, updatedAt }
+  })
+  return [...changed]
 }
 
 let inFlight: Promise<void> | null = null
@@ -345,14 +378,25 @@ async function doSync() {
       throw new Error('Apps Script chưa được cập nhật để đồng bộ cấu hình. Hãy cập nhật Code.gs và triển khai phiên bản mới.')
     }
 
+    if (changes.accounts?.length && res.data.accounts?.some((a) => !('currentBalance' in a))) {
+      throw new Error('Apps Script is missing the currentBalance column. Update and redeploy apps-script/Code.gs to sync account balances.')
+    }
+
     // Merge server data with local state (local may have changed mid-flight).
     const tables = emptyTables()
     const dirty = emptyDirty()
+    let remoteTransactionsChanged = false
     for (const t of TABLE_NAMES) {
       const byId = new Map<string, RecordOf<TableName>>()
       for (const row of res.data[t] ?? []) {
         const n = normalize(t, row as unknown as Record<string, unknown>)
-        if (n.id) byId.set(n.id, n)
+        if (n.id) {
+          if (t === 'transactions') {
+            const local = (state.tables.transactions as RecordOf<'transactions'>[]).find((r) => r.id === n.id)
+            if (!local || local.updatedAt !== n.updatedAt) remoteTransactionsChanged = true
+          }
+          byId.set(n.id, n)
+        }
       }
       for (const local of state.tables[t] as RecordOf<TableName>[]) {
         const remote = byId.get(local.id)
@@ -365,6 +409,9 @@ async function doSync() {
         return !cur || pushedVersions.get(`${t}:${id}`) !== cur.updatedAt
       })
     }
+    const migratedAccountIds = fillMissingAccountBalances(tables)
+    const reconciledAccountIds = remoteTransactionsChanged ? reconcileAccountBalances(tables) : []
+    dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds, ...reconciledAccountIds]))
     const sharedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
     const settings = sharedSettings
       ? { ...state.settings, autoSync: sharedSettings.autoSync, moneyInputMultiplier: sharedSettings.moneyInputMultiplier, moneyInputCurrencyCode: sharedSettings.moneyInputCurrencyCode }

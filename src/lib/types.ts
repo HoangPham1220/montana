@@ -45,6 +45,8 @@ export interface Account extends BaseRecord {
   name: string
   kind: AccountKind
   openingBalance: number
+  /** Cached current balance, updated with each account or transaction change. */
+  currentBalance: number
   color: string
   icon: string
   archived: boolean
@@ -111,7 +113,7 @@ export const TABLE_NAMES: TableName[] = [
 ]
 
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
-  accounts: ['id', 'name', 'kind', 'openingBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
+  accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
   transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
