@@ -84,7 +84,7 @@ export default function AssetFormModal({
         <Field label="Vốn đã bỏ ra (VND)">
           <MoneyInput value={costBasis} onChange={setCostBasis} placeholder="0" />
         </Field>
-        <Field label="Giá hiện tại / đơn vị (tuỳ chọn, tự tính giá trị = giá × số lượng)">
+        <Field label="Tỷ giá">
           <MoneyInput value={price} onChange={onPrice} precision={2} placeholder="0" />
         </Field>
         <Field label="Giá trị hiện tại (VND)">
