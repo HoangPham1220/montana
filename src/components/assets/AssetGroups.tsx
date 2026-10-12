@@ -10,12 +10,12 @@ export interface Group { id: string; name: string; color: string; assets: Asset[
 const plClass = (n: number) => (n > 0 ? 'text-emerald-600 dark:text-emerald-400' : n < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400')
 
 export default function AssetGroups({
-  groups, total, onEdit, onQuickValue, onAdd, onManageCategories,
+  groups, total, onEdit, onViewTransactions, onAdd, onManageCategories,
 }: {
   groups: Group[]
   total: number
   onEdit: (a: Asset) => void
-  onQuickValue: (a: Asset) => void
+  onViewTransactions: (a: Asset) => void
   onAdd: () => void
   onManageCategories: () => void
 }) {
@@ -64,7 +64,7 @@ export default function AssetGroups({
                     const pct = a.costBasis > 0 ? (pl / a.costBasis) * 100 : 0
                     return (
                       <li key={a.id} className="flex items-center gap-2 px-3 py-2">
-                        <button className="min-w-0 flex-1 text-left" onClick={() => onEdit(a)}>
+                        <button className="min-w-0 flex-1 text-left" onClick={() => onViewTransactions(a)}>
                           <p className="truncate text-sm font-medium">{a.name}</p>
                           <p className="text-xs text-slate-400">
                             {formatNumber(a.quantity)} {a.unit} · Vốn {formatVND(a.costBasis)}
@@ -76,7 +76,7 @@ export default function AssetGroups({
                             {a.costBasis > 0 ? `${pl > 0 ? '+' : ''}${formatPercent(pct)}` : '—'}
                           </p>
                         </div>
-                        <Button variant="ghost" className="!px-2 !py-1 text-xs" title="Cập nhật giá trị" onClick={() => onQuickValue(a)}>
+                        <Button variant="ghost" className="!px-2 !py-1 text-xs" title="Sửa tài sản" onClick={() => onEdit(a)}>
                           Cập nhật
                         </Button>
                       </li>

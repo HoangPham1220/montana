@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { useStore, useTable } from '../lib/store'
 import { ACCOUNTS_ASSET_CATEGORY_ID, totalCashBalance, useAccountBalances } from '../lib/accounts'
 import { today } from '../lib/format'
-import type { Asset } from '../lib/types'
+import type { Asset, Transaction } from '../lib/types'
 import SummaryCards from '../components/assets/SummaryCards'
 import AllocationCard, { type Slice } from '../components/assets/AllocationCard'
 import HistoryCard from '../components/assets/HistoryCard'
 import AssetGroups, { type Group } from '../components/assets/AssetGroups'
 import AssetFormModal from '../components/assets/AssetFormModal'
-import QuickValueModal from '../components/assets/QuickValueModal'
+import AssetTransactionsModal from '../components/assets/AssetTransactionsModal'
+import TransactionForm from '../components/expenses/TransactionForm'
 import CategoriesModal from '../components/assets/CategoriesModal'
 import { buildHistory, UNCATEGORIZED_COLOR, UNCATEGORIZED_ID } from '../components/assets/utils'
 
@@ -17,11 +18,13 @@ export default function Assets() {
   const categories = useTable('assetCategories')
   const allAssets = useStore((s) => s.tables.assets)
   const allTxs = useStore((s) => s.tables.transactions)
+  const transactionCategories = useTable('categories')
   const { accounts, balances, total: cashTotal } = useAccountBalances()
   const allSnapshots = useStore((s) => s.tables.assetSnapshots)
 
   const [form, setForm] = useState<{ asset: Asset | null } | null>(null)
-  const [quick, setQuick] = useState<Asset | null>(null)
+  const [transactionAsset, setTransactionAsset] = useState<Asset | null>(null)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [catsOpen, setCatsOpen] = useState(false)
 
   const { totalValue, totalInvested, totalCost, groups, slices } = useMemo(() => {
@@ -67,12 +70,13 @@ export default function Assets() {
         groups={groups}
         total={totalValue}
         onEdit={(a) => setForm({ asset: a })}
-        onQuickValue={setQuick}
+        onViewTransactions={setTransactionAsset}
         onAdd={() => setForm({ asset: null })}
         onManageCategories={() => setCatsOpen(true)}
       />
       <AssetFormModal open={!!form} asset={form?.asset ?? null} categories={categories} onClose={() => setForm(null)} />
-      <QuickValueModal asset={quick} onClose={() => setQuick(null)} />
+      <AssetTransactionsModal asset={transactionAsset} transactions={allTxs} onClose={() => setTransactionAsset(null)} onEdit={(t) => { setTransactionAsset(null); setEditingTransaction(t) }} />
+      <TransactionForm open={!!editingTransaction} editing={editingTransaction} categories={transactionCategories} onClose={() => setEditingTransaction(null)} />
       <CategoriesModal open={catsOpen} categories={categories} assets={assets} onClose={() => setCatsOpen(false)} />
     </div>
   )
