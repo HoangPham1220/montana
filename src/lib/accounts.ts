@@ -58,9 +58,12 @@ function changeInvestmentAssets(previous: Transaction | undefined, next?: Transa
   const changes = new Map<string, { amount: number; quantity: number }>()
   const add = (t: Transaction | undefined, sign: number) => {
     if (t?.type !== 'investment' || !t.assetId) return
+    const asset = getState().tables.assets.find((a) => a.id === t.assetId && !a.deleted)
+    const unitPrice = t.investmentUnitPrice || asset?.currentPrice || (asset?.quantity ? asset.currentValue / asset.quantity : 0)
+    const quantity = t.investmentQuantity || (unitPrice ? t.amount / unitPrice : 0)
     const delta = changes.get(t.assetId) ?? { amount: 0, quantity: 0 }
     delta.amount += sign * t.amount
-    delta.quantity += sign * (t.investmentQuantity ?? 0)
+    delta.quantity += sign * quantity
     changes.set(t.assetId, delta)
   }
   add(previous, -1)

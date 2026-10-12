@@ -382,6 +382,15 @@ async function doSync() {
       throw new Error('Apps Script is missing the currentBalance column. Update and redeploy apps-script/Code.gs to sync account balances.')
     }
 
+    const investments = changes.transactions?.filter((t) => t.type === 'investment' && t.investmentQuantity != null && t.investmentUnitPrice != null) ?? []
+    const remoteTransactions = res.data.transactions ?? []
+    if (investments.some((t) => {
+      const remote = remoteTransactions.find((row) => row.id === t.id)
+      return !remote || !('investmentQuantity' in remote) || !('investmentUnitPrice' in remote)
+    })) {
+      throw new Error('Apps Script is missing investmentQuantity and investmentUnitPrice. Update and redeploy apps-script/Code.gs to sync investment transactions.')
+    }
+
     // Merge server data with local state (local may have changed mid-flight).
     const tables = emptyTables()
     const dirty = emptyDirty()
