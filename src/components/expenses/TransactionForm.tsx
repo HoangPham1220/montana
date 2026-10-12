@@ -150,6 +150,15 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       }}
     >
       <TypeToggle allowTransfer allowInvestment value={type} onChange={setType} />
+      {isInvestment && (
+            <Field label={"Tài sản"}>
+              <Select value={newAsset ? '__new__' : assetId} onChange={(e) => { const id = e.target.value; setNewAsset(id === '__new__'); setAssetId(id === '__new__' ? '' : id); const a = assets.find((item) => item.id === id); if (a) setInvestmentUnitPrice(a.currentPrice ?? (a.quantity ? Math.round(a.currentValue / a.quantity * 100) / 100 : 0)) }}>
+                <option value="">-- Chọn tài sản hiện có --</option>
+                {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                <option value="__new__">{"+ Thêm tài sản mới"}</option>
+              </Select>
+            </Field>
+      )}
       {isInvestment ? (
         <>
           <Field label={`Số lượng${newAsset ? '' : selectedAsset?.unit ? ` (${selectedAsset.unit})` : ''}`}>
@@ -193,13 +202,6 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
         </>
       ) : isInvestment ? (
         <>
-          <Field label={"Tài sản"}>
-            <Select value={newAsset ? '__new__' : assetId} onChange={(e) => { const id = e.target.value; setNewAsset(id === '__new__'); setAssetId(id === '__new__' ? '' : id); const a = assets.find((item) => item.id === id); if (a) setInvestmentUnitPrice(a.currentPrice ?? (a.quantity ? Math.round(a.currentValue / a.quantity * 100) / 100 : 0)) }}>
-              <option value="">-- Chọn tài sản hiện có --</option>
-              {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              <option value="__new__">{"+ Thêm tài sản mới"}</option>
-            </Select>
-          </Field>
           {newAsset && <>
             <Field label="Đơn vị"><Input value={newAssetUnit} onChange={(e) => setNewAssetUnit(e.target.value)} placeholder="VD: chỉ, cổ phiếu, BTC" /></Field>
             <Field label="Tên tài sản"><Input value={assetName} onChange={(e) => setAssetName(e.target.value)} /></Field>
