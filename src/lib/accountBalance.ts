@@ -7,7 +7,7 @@ export function txAccountId(t: Transaction): string {
 
 export function accountDelta(t: Transaction, accountId: string): number {
   if (t.type === 'income') return txAccountId(t) === accountId ? t.amount : 0
-  if (t.type === 'expense') return txAccountId(t) === accountId ? -t.amount : 0
+  if (t.type === 'expense' || t.type === 'investment') return txAccountId(t) === accountId ? -t.amount : 0
   if (t.type === 'adjustment') return txAccountId(t) === accountId ? t.amount : 0
   const from = txAccountId(t)
   const to = t.toAccountId

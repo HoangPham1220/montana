@@ -1,6 +1,7 @@
 // Money accounts ("Nguồn tiền"): balance maths shared by all pages.
 import { useMemo } from 'react'
 import { useTable } from './store'
+import { today } from './format'
 import type { Account, AccountKind, Transaction } from './types'
 import { accountDelta, computeBalances } from './accountBalance'
 import { getState, remove, upsert } from './store'
@@ -42,14 +43,30 @@ function changeCachedBalances(deltas: Map<string, number>) {
 
 /** Save a transaction and apply only its balance difference to affected accounts. */
 export function saveTransaction(draft: TransactionDraft) {
-  const previous = draft.id && getState().tables.transactions.find((t) => t.id === draft.id && !t.deleted)
+  const previous = draft.id ? getState().tables.transactions.find((t) => t.id === draft.id && !t.deleted) : undefined
   const deltas = new Map<string, number>()
   if (previous) for (const account of getState().tables.accounts) deltas.set(account.id, -accountDelta(previous, account.id))
   const next = { ...draft, id: draft.id ?? '', updatedAt: '' } as Transaction
   for (const account of getState().tables.accounts) deltas.set(account.id, (deltas.get(account.id) ?? 0) + accountDelta(next, account.id))
   const saved = upsert('transactions', draft)
   changeCachedBalances(deltas)
+  changeInvestmentAssets(previous, saved)
   return saved
+}
+
+function changeInvestmentAssets(previous: Transaction | undefined, next?: Transaction) {
+  const changes = new Map<string, number>()
+  if (previous?.type === 'investment' && previous.assetId) changes.set(previous.assetId, (changes.get(previous.assetId) ?? 0) - previous.amount)
+  if (next?.type === 'investment' && next.assetId) changes.set(next.assetId, (changes.get(next.assetId) ?? 0) + next.amount)
+  for (const [id, delta] of changes) {
+    const asset = getState().tables.assets.find((a) => a.id === id && !a.deleted)
+    if (!asset || !delta) continue
+    const currentValue = asset.currentValue + delta
+    upsert('assets', { ...asset, currentValue, costBasis: asset.costBasis + delta })
+    const date = today()
+    const snapshot = getState().tables.assetSnapshots.find((s) => s.assetId === id && s.date === date && !s.deleted)
+    upsert('assetSnapshots', snapshot ? { ...snapshot, value: currentValue } : { assetId: id, date, value: currentValue })
+  }
 }
 
 export function deleteTransaction(id: string) {
@@ -57,6 +74,7 @@ export function deleteTransaction(id: string) {
   if (transaction) {
     const deltas = new Map(getState().tables.accounts.map((account) => [account.id, -accountDelta(transaction, account.id)]))
     changeCachedBalances(deltas)
+    changeInvestmentAssets(transaction)
   }
   remove('transactions', id)
 }

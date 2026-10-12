@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { formatVND, today } from '../../lib/format'
 import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { deleteTransaction, saveTransaction, txAccountId, useAccountBalances } from '../../lib/accounts'
+import { upsert, useTable } from '../../lib/store'
 import { isSelectableCategory } from '../../lib/categoryTree'
 import type { Account, Category, Transaction, TransactionType } from '../../lib/types'
 import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
@@ -45,6 +46,8 @@ export default function TransactionForm({ open, ...rest }: Props) {
 
 function Body({ editing, categories, defaultType = 'expense', defaultDate, defaultAccountId, onClose }: Omit<Props, 'open'>) {
   const { accounts, balances } = useAccountBalances()
+  const assets = useTable('assets')
+  const assetCategories = useTable('assetCategories')
   const [type, setType] = useState<TransactionType>(editing?.type ?? defaultType)
   const [accountId, setAccountId] = useState(() => {
     const id = editing ? txAccountId(editing) : (defaultAccountId ?? readLastAccount() ?? DEFAULT_ACCOUNT_ID)
@@ -53,6 +56,10 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   const [toAccountId, setToAccountId] = useState(editing?.toAccountId ?? '')
   const [amount, setAmount] = useState(editing?.amount ?? 0)
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? '')
+  const [assetId, setAssetId] = useState(editing?.assetId ?? '')
+  const [newAsset, setNewAsset] = useState(false)
+  const [assetName, setAssetName] = useState('')
+  const [assetCategoryId, setAssetCategoryId] = useState('')
   const [date, setDate] = useState(editing?.date ?? defaultDate ?? today())
   const [note, setNote] = useState(editing?.note ?? '')
   const [amountKey, setAmountKey] = useState(0)
@@ -65,6 +72,7 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   )
   const accLabel = (a: Account) => `${a.icon} ${a.name} (${formatVND(balances.get(a.id) ?? 0)})`
   const isTransfer = type === 'transfer'
+  const isInvestment = type === 'investment'
 
   const options = useMemo(
     () => categories.filter((c) => c.type === type && isSelectableCategory(c, categories)),
@@ -78,15 +86,21 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
     if (isTransfer) {
       if (!accountId || !toAccountId) return setError('Chọn nguồn tiền đi và đến')
       if (accountId === toAccountId) return setError('Nguồn tiền đi và đến phải khác nhau')
+    } else if (isInvestment) {
+      if (newAsset && (!assetName.trim() || !assetCategoryId)) return setError('Nhập tên và chọn danh mục tài sản')
+      if (!newAsset && !assets.some((a) => a.id === assetId)) return setError('Chọn tài sản')
     } else if (!selected) return setError('Chọn danh mục')
     if (!date) return setError('Chọn ngày')
+    let linkedAssetId = assetId
+    if (isInvestment && newAsset) linkedAssetId = upsert('assets', { name: assetName.trim(), categoryId: assetCategoryId, quantity: 1, unit: 'khoản', costBasis: 0, currentValue: 0, note: '' }).id
     saveTransaction({
       id: editing?.id,
       type,
       amount,
-      categoryId: isTransfer ? '' : selected,
+      categoryId: isTransfer || isInvestment ? '' : selected,
       accountId,
       toAccountId: isTransfer ? toAccountId : '',
+      assetId: isInvestment ? linkedAssetId : '',
       date,
       note: note.trim(),
     })
@@ -126,7 +140,7 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
         save(false)
       }}
     >
-      <TypeToggle allowTransfer value={type} onChange={setType} />
+      <TypeToggle allowTransfer allowInvestment value={type} onChange={setType} />
       <Field label="Số tiền (VND)">
         <MoneyInput key={amountKey} autoFocus value={amount} onChange={setAmount} placeholder="VD: 50k, 1,5tr" />
       </Field>
@@ -151,6 +165,30 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
                     {accLabel(a)}
                   </option>
                 ))}
+            </Select>
+          </Field>
+        </>
+      ) : isInvestment ? (
+        <>
+          <Field label={"Tài sản"}>
+            <Select value={newAsset ? '__new__' : assetId} onChange={(e) => { setNewAsset(e.target.value === '__new__'); setAssetId(e.target.value === '__new__' ? '' : e.target.value) }}>
+              <option value="">-- Chọn tài sản hiện có --</option>
+              {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              <option value="__new__">{"+ Thêm tài sản mới"}</option>
+            </Select>
+          </Field>
+          {newAsset && <>
+            <Field label="Tên tài sản"><Input value={assetName} onChange={(e) => setAssetName(e.target.value)} /></Field>
+            <Field label={"Danh mục tài sản"}>
+              <Select value={assetCategoryId} onChange={(e) => setAssetCategoryId(e.target.value)}>
+                <option value="">{"-- Chọn danh mục --"}</option>
+                {assetCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+            </Field>
+          </>}
+          <Field label={"Nguồn tiền"}>
+            <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {accountOptions.map((a) => <option key={a.id} value={a.id}>{accLabel(a)}</option>)}
             </Select>
           </Field>
         </>

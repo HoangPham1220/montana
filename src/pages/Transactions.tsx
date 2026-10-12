@@ -16,6 +16,7 @@ import FloatingActionMenu from '../components/ui/FloatingActionMenu'
 export default function Transactions() {
   const transactions = useTable('transactions')
   const categories = useTable('categories')
+  const assets = useTable('assets')
   const [month, setMonth] = useState(monthOf(today()))
   const [searchParams] = useSearchParams()
   const { accounts } = useAccountBalances()
@@ -29,6 +30,7 @@ export default function Transactions() {
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const accById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+  const assetById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets])
   const accLabel = (id: string) => {
     const a = accById.get(id || DEFAULT_ACCOUNT_ID)
     return a ? `${a.icon} ${a.name}` : 'Không rõ'
@@ -166,6 +168,7 @@ export default function Transactions() {
                 const c = catById.get(t.categoryId)
                 const isTransfer = t.type === 'transfer'
                 const isAdjustment = t.type === 'adjustment'
+                const isInvestment = t.type === 'investment'
                 const delta = accountFilter ? accountDelta(t, accountFilter) : 0
                 let amountText: string
                 let amountCls: string
@@ -188,7 +191,7 @@ export default function Transactions() {
                       <CategoryDot icon={isTransfer ? '🔁' : isAdjustment ? '↕️' : (c?.icon ?? '❓')} color={isTransfer ? '#0ea5e9' : isAdjustment ? '#64748b' : (c?.color ?? '#94a3b8')} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">
-                          {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : isAdjustment ? t.note || 'Điều chỉnh số dư' : categoryLabel(c, categories)}
+                          {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : isAdjustment ? t.note || 'Điều chỉnh số dư' : isInvestment ? `Đầu tư: ${assetById.get(t.assetId ?? '')?.name ?? 'Tài sản'}` : categoryLabel(c, categories)}
                         </span>
                         {!isTransfer && <span className="block truncate text-xs text-slate-400">{accLabel(t.accountId)}</span>}
                         {t.note && !isAdjustment && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{t.note}</span>}
@@ -209,6 +212,7 @@ export default function Transactions() {
           { label: 'Thêm khoản chi', description: 'Ghi lại một khoản chi tiêu', icon: '↗', onSelect: () => openNew('expense') },
           { label: 'Thêm khoản thu', description: 'Ghi lại tiền lương, thưởng…', icon: '↙', onSelect: () => openNew('income') },
           { label: 'Chuyển tiền', description: 'Chuyển giữa các nguồn tiền', icon: '⇄', onSelect: () => openNew('transfer') },
+{ label: 'Đầu tư', description: 'Đầu tư từ nguồn tiền vào tài sản', icon: '\u{1F4C8}', onSelect: () => openNew('investment') },
         ]}
       />
 

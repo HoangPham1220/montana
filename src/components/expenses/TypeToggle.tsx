@@ -5,10 +5,12 @@ export default function TypeToggle<T extends TransactionType>({
   value,
   onChange,
   allowTransfer = false,
+  allowInvestment = false,
 }: {
   value: T
   onChange: (t: T) => void
   allowTransfer?: boolean
+  allowInvestment?: boolean
 }) {
   const opt = (t: TransactionType, label: string, active: string) => (
     <button
@@ -26,6 +28,7 @@ export default function TypeToggle<T extends TransactionType>({
       {opt('expense', 'Chi', 'bg-rose-600 text-white shadow-sm')}
       {opt('income', 'Thu', 'bg-emerald-600 text-white shadow-sm')}
       {allowTransfer && opt('transfer', 'Chuyển tiền', 'bg-sky-600 text-white shadow-sm')}
+      {allowInvestment && opt('investment', 'Đầu tư', 'bg-violet-600 text-white shadow-sm')}
     </div>
   )
 }

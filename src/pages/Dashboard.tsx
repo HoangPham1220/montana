@@ -17,6 +17,7 @@ export default function Dashboard() {
   const categories = useTable('categories')
   const transactions = useTable('transactions')
   const assets = useTable('assets')
+  const assetById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets])
   const { accounts, total: cashTotal } = useAccountBalances()
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
   const [month, setMonth] = useState(currentMonth)
@@ -27,6 +28,7 @@ export default function Dashboard() {
     { label: 'Thêm khoản chi', description: 'Ghi lại một khoản chi tiêu', icon: '↗', onSelect: () => openNewTransaction('expense') },
     { label: 'Thêm khoản thu', description: 'Ghi lại tiền lương, thưởng…', icon: '↙', onSelect: () => openNewTransaction('income') },
     { label: 'Chuyển tiền', description: 'Chuyển giữa các nguồn tiền', icon: '⇄', onSelect: () => openNewTransaction('transfer') },
+{ label: 'Đầu tư', description: 'Đầu tư từ nguồn tiền vào tài sản', icon: '\u{1F4C8}', onSelect: () => openNewTransaction('investment') },
   ]
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
@@ -37,7 +39,7 @@ export default function Dashboard() {
     let income = 0
     let expense = 0
     for (const t of transactions) {
-      if (t.type === 'transfer' || t.type === 'adjustment') continue
+      if (t.type === 'transfer' || t.type === 'adjustment' || t.type === 'investment') continue
       const m = monthOf(t.date)
       const p = perMonth.get(m) ?? { income: 0, expense: 0 }
       p[t.type] += t.amount
@@ -201,9 +203,10 @@ export default function Dashboard() {
               const c = catById.get(t.categoryId)
               const transfer = t.type === 'transfer'
               const adjustment = t.type === 'adjustment'
+              const investment = t.type === 'investment'
               const title = transfer
                 ? `Chuyển tiền: ${accountById.get(t.accountId || DEFAULT_ACCOUNT_ID)?.name ?? 'Không rõ'} → ${accountById.get(t.toAccountId)?.name ?? 'Không rõ'}`
-                : adjustment ? t.note || 'Điều chỉnh số dư' : t.note || categoryLabel(c, categories)
+                : investment ? `Đầu tư: ${assetById.get(t.assetId ?? '')?.name ?? 'Tài sản'}` : adjustment ? t.note || 'Điều chỉnh số dư' : t.note || categoryLabel(c, categories)
               const amountColor = transfer ? 'text-slate-500' : adjustment ? (t.amount < 0 ? 'text-rose-600' : 'text-emerald-600') : t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
               return (
                 <li key={t.id} className="flex min-w-0 items-center gap-2 py-2 text-sm sm:gap-3">

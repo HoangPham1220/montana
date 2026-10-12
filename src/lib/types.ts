@@ -3,7 +3,7 @@
 
 export type TxType = 'expense' | 'income'
 /** Transaction kind: categories only use TxType; transactions may also be transfers. */
-export type TransactionType = TxType | 'transfer' | 'adjustment'
+export type TransactionType = TxType | 'transfer' | 'adjustment' | 'investment'
 
 interface BaseRecord {
   id: string
@@ -35,6 +35,8 @@ export interface Transaction extends BaseRecord {
   accountId: string
   /** Destination account, only for transfers, else ''. */
   toAccountId: string
+  /** Linked asset for investment transactions. */
+  assetId?: string
   note: string
 }
 
@@ -115,7 +117,7 @@ export const TABLE_NAMES: TableName[] = [
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
-  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'note', 'updatedAt', 'deleted'],
+  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
