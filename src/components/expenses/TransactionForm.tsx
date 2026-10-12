@@ -39,7 +39,7 @@ function rememberAccount(id: string) {
 export default function TransactionForm({ open, ...rest }: Props) {
   return (
     <Modal open={open} title={rest.editing ? 'Sửa giao dịch' : 'Thêm giao dịch'} onClose={rest.onClose}>
-      <Body {...rest} />
+      <Body key={`${open}-${rest.editing?.id ?? 'new'}`} {...rest} />
     </Modal>
   )
 }
@@ -60,6 +60,9 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   const [newAsset, setNewAsset] = useState(false)
   const [assetName, setAssetName] = useState('')
   const [assetCategoryId, setAssetCategoryId] = useState('')
+  const [newAssetUnit, setNewAssetUnit] = useState('')
+  const [investmentQuantity, setInvestmentQuantity] = useState(editing?.investmentQuantity ?? 0)
+  const [investmentUnitPrice, setInvestmentUnitPrice] = useState(editing?.investmentUnitPrice ?? 0)
   const [date, setDate] = useState(editing?.date ?? defaultDate ?? today())
   const [note, setNote] = useState(editing?.note ?? '')
   const [amountKey, setAmountKey] = useState(0)
@@ -73,6 +76,8 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   const accLabel = (a: Account) => `${a.icon} ${a.name} (${formatVND(balances.get(a.id) ?? 0)})`
   const isTransfer = type === 'transfer'
   const isInvestment = type === 'investment'
+  const selectedAsset = assets.find((a) => a.id === assetId)
+  const transactionAmount = isInvestment ? Math.round(investmentQuantity * investmentUnitPrice) : amount
 
   const options = useMemo(
     () => categories.filter((c) => c.type === type && isSelectableCategory(c, categories)),
@@ -82,31 +87,35 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   const selected = options.some((c) => c.id === categoryId) ? categoryId : ''
 
   const save = (again: boolean) => {
-    if (amount <= 0) return setError('Nhập số tiền lớn hơn 0')
+    if (transactionAmount <= 0) return setError('Nhập số tiền lớn hơn 0')
     if (isTransfer) {
       if (!accountId || !toAccountId) return setError('Chọn nguồn tiền đi và đến')
       if (accountId === toAccountId) return setError('Nguồn tiền đi và đến phải khác nhau')
     } else if (isInvestment) {
-      if (newAsset && (!assetName.trim() || !assetCategoryId)) return setError('Nhập tên và chọn danh mục tài sản')
+      if (investmentQuantity <= 0 || investmentUnitPrice <= 0) return setError('Nhập số lượng và giá mỗi đơn vị lớn hơn 0')
+      if (newAsset && (!assetName.trim() || !assetCategoryId || !newAssetUnit.trim())) return setError('Tên, đơn vị và danh mục tài sản là bắt buộc')
       if (!newAsset && !assets.some((a) => a.id === assetId)) return setError('Chọn tài sản')
     } else if (!selected) return setError('Chọn danh mục')
     if (!date) return setError('Chọn ngày')
     let linkedAssetId = assetId
-    if (isInvestment && newAsset) linkedAssetId = upsert('assets', { name: assetName.trim(), categoryId: assetCategoryId, quantity: 1, unit: 'khoản', costBasis: 0, currentValue: 0, note: '' }).id
+    if (isInvestment && newAsset) linkedAssetId = upsert('assets', { name: assetName.trim(), categoryId: assetCategoryId, quantity: 0, unit: newAssetUnit.trim(), costBasis: 0, currentValue: 0, note: '' }).id
     saveTransaction({
       id: editing?.id,
       type,
-      amount,
+      amount: transactionAmount,
       categoryId: isTransfer || isInvestment ? '' : selected,
       accountId,
       toAccountId: isTransfer ? toAccountId : '',
       assetId: isInvestment ? linkedAssetId : '',
+      investmentQuantity: isInvestment ? investmentQuantity : undefined,
+      investmentUnitPrice: isInvestment ? investmentUnitPrice : undefined,
       date,
       note: note.trim(),
     })
     rememberAccount(accountId)
     if (again && !editing) {
       setAmount(0)
+      if (isInvestment) setInvestmentQuantity(0)
       setNote('')
       setError('')
       setAmountKey((k) => k + 1) // remount MoneyInput to refocus
@@ -141,9 +150,23 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       }}
     >
       <TypeToggle allowTransfer allowInvestment value={type} onChange={setType} />
-      <Field label="Số tiền (VND)">
-        <MoneyInput key={amountKey} autoFocus value={amount} onChange={setAmount} placeholder="VD: 50k, 1,5tr" />
-      </Field>
+      {isInvestment ? (
+        <>
+          <Field label={`Số lượng${newAsset ? '' : selectedAsset?.unit ? ` (${selectedAsset.unit})` : ''}`}>
+            <Input type="number" min="0" step="any" value={investmentQuantity || ''} onChange={(e) => setInvestmentQuantity(Number(e.target.value) || 0)} />
+          </Field>
+          <Field label="Giá / đơn vị (VND)">
+            <MoneyInput precision={2} value={investmentUnitPrice} onChange={setInvestmentUnitPrice} placeholder="VD: 20.000" />
+          </Field>
+          <Field label="Tổng tiền đầu tư (VND)">
+            <MoneyInput value={transactionAmount} onChange={() => {}} readOnly />
+          </Field>
+        </>
+      ) : (
+        <Field label="Số tiền (VND)">
+          <MoneyInput key={amountKey} autoFocus value={amount} onChange={setAmount} placeholder="VD: 50k, 1,5tr" />
+        </Field>
+      )}
       {isTransfer ? (
         <>
           <Field label="Từ">
@@ -171,13 +194,14 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       ) : isInvestment ? (
         <>
           <Field label={"Tài sản"}>
-            <Select value={newAsset ? '__new__' : assetId} onChange={(e) => { setNewAsset(e.target.value === '__new__'); setAssetId(e.target.value === '__new__' ? '' : e.target.value) }}>
+            <Select value={newAsset ? '__new__' : assetId} onChange={(e) => { const id = e.target.value; setNewAsset(id === '__new__'); setAssetId(id === '__new__' ? '' : id); const a = assets.find((item) => item.id === id); if (a) setInvestmentUnitPrice(a.currentPrice ?? (a.quantity ? Math.round(a.currentValue / a.quantity * 100) / 100 : 0)) }}>
               <option value="">-- Chọn tài sản hiện có --</option>
               {assets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               <option value="__new__">{"+ Thêm tài sản mới"}</option>
             </Select>
           </Field>
           {newAsset && <>
+            <Field label="Đơn vị"><Input value={newAssetUnit} onChange={(e) => setNewAssetUnit(e.target.value)} placeholder="VD: chỉ, cổ phiếu, BTC" /></Field>
             <Field label="Tên tài sản"><Input value={assetName} onChange={(e) => setAssetName(e.target.value)} /></Field>
             <Field label={"Danh mục tài sản"}>
               <Select value={assetCategoryId} onChange={(e) => setAssetCategoryId(e.target.value)}>

@@ -55,14 +55,22 @@ export function saveTransaction(draft: TransactionDraft) {
 }
 
 function changeInvestmentAssets(previous: Transaction | undefined, next?: Transaction) {
-  const changes = new Map<string, number>()
-  if (previous?.type === 'investment' && previous.assetId) changes.set(previous.assetId, (changes.get(previous.assetId) ?? 0) - previous.amount)
-  if (next?.type === 'investment' && next.assetId) changes.set(next.assetId, (changes.get(next.assetId) ?? 0) + next.amount)
+  const changes = new Map<string, { amount: number; quantity: number }>()
+  const add = (t: Transaction | undefined, sign: number) => {
+    if (t?.type !== 'investment' || !t.assetId) return
+    const delta = changes.get(t.assetId) ?? { amount: 0, quantity: 0 }
+    delta.amount += sign * t.amount
+    delta.quantity += sign * (t.investmentQuantity ?? 0)
+    changes.set(t.assetId, delta)
+  }
+  add(previous, -1)
+  add(next, 1)
   for (const [id, delta] of changes) {
     const asset = getState().tables.assets.find((a) => a.id === id && !a.deleted)
-    if (!asset || !delta) continue
-    const currentValue = asset.currentValue + delta
-    upsert('assets', { ...asset, currentValue, costBasis: asset.costBasis + delta })
+    if (!asset || (!delta.amount && !delta.quantity)) continue
+    const quantity = asset.quantity + delta.quantity
+    const currentValue = asset.currentPrice != null ? quantity * asset.currentPrice : asset.currentValue + delta.amount
+    upsert('assets', { ...asset, quantity, currentValue, costBasis: asset.costBasis + delta.amount })
     const date = today()
     const snapshot = getState().tables.assetSnapshots.find((s) => s.assetId === id && s.date === date && !s.deleted)
     upsert('assetSnapshots', snapshot ? { ...snapshot, value: currentValue } : { assetId: id, date, value: currentValue })

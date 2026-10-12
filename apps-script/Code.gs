@@ -12,14 +12,14 @@
 var SHEET_COLUMNS = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
-  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'note', 'updatedAt', 'deleted'],
+  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'investmentQuantity', 'investmentUnitPrice', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
   appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted']
 };
 var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings'];
-var NUMBER_FIELDS = ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier'];
+var NUMBER_FIELDS = ['amount', 'investmentQuantity', 'investmentUnitPrice', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier'];
 var BOOLEAN_FIELDS = ['deleted', 'archived', 'autoSync'];
 var DATE_FIELDS = ['date']; // yyyy-MM-dd text; other text fields that hold Dates become ISO strings
 

@@ -37,6 +37,8 @@ export interface Transaction extends BaseRecord {
   toAccountId: string
   /** Linked asset for investment transactions. */
   assetId?: string
+  investmentQuantity?: number
+  investmentUnitPrice?: number
   note: string
 }
 
@@ -117,7 +119,7 @@ export const TABLE_NAMES: TableName[] = [
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
-  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'note', 'updatedAt', 'deleted'],
+  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'investmentQuantity', 'investmentUnitPrice', 'note', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],

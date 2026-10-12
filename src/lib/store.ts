@@ -285,7 +285,7 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
   // booleans as TRUE/FALSE strings.
   const out: Record<string, unknown> = { ...row }
   if (table === 'accounts' && (out.currentBalance == null || out.currentBalance === '')) delete out.currentBalance
-  for (const k of ['amount', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier']) {
+  for (const k of ['amount', 'investmentQuantity', 'investmentUnitPrice', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier']) {
     if (k in out) out[k] = Number(out[k]) || 0
   }
   const toBool = (v: unknown) => v === true || v === 'TRUE' || v === 'true'
