@@ -77,11 +77,12 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |
 | `assets` | id, name, categoryId, quantity, unit, costBasis, currentPrice, currentValue, note, updatedAt, deleted |
 | `assetSnapshots` | id, assetId, date, value, updatedAt, deleted |
-| `appSettings` | id, autoSync, moneyInputMultiplier, moneyInputCurrencyCode, snapshotDay, updatedAt, deleted |
+| `appSettings` | id, autoSync, moneyInputMultiplier, moneyInputCurrencyCode, snapshotDay, snapshotMode, updatedAt, deleted |
 | `financialSnapshots` | id, month, scheduledDate, capturedAt, data, updatedAt, deleted |
 
 ## Snapshot tài sản và báo cáo
 
+- Chọn **Tự động** (mặc định) để chạy theo lịch, hoặc **Thủ công** để hiện nút **Snapshot**. Nút này lưu chế độ thủ công, đồng bộ rồi chụp số liệu trên Sheet vào kỳ tháng hiện tại, không cần cài trigger. Tháng đã chốt không được chụp lại. Chế độ thủ công dừng lịch tự động sau khi đồng bộ; cần cập nhật và deploy `Code.gs` mới cho cả hai chế độ.
 - Trong **Cài đặt → Chốt tài sản hằng tháng**, chọn ngày 1–31 (mặc định 10), lưu và đồng bộ. Ngày 29–31 được chuyển về ngày cuối tháng nếu cần.
 - Cập nhật `apps-script/Code.gs`, triển khai **New version**, rồi chạy `installSnapshotTrigger()` một lần trong Apps Script và cấp quyền. Có thể dùng menu **Montana → Bật lịch snapshot** trong Sheet sau khi tải lại. Chạy lại không tạo lịch trùng cho cùng người cài đặt.
 - Lịch kiểm tra mỗi ngày khoảng 06–07 giờ Việt Nam, chụp vào ngày đã chọn kể cả khi app đóng. Cần đồng bộ và cập nhật định giá trước lịch chụp. Snapshot dùng giao dịch đã lưu trên Sheet để tính số dư đến ngày chụp, gồm cả nguồn tiền lưu trữ và số dư nợ âm; giá trị đầu tư dùng định giá đã nhập.

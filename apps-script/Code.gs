@@ -2,7 +2,7 @@
  * Montana - Google Apps Script backend (container-bound to a Google Sheet).
  *
  * API contract (see src/lib/types.ts):
- *   POST body (text/plain JSON): { token, action: 'ping' | 'pull' | 'push', changes? }
+ *   POST body (text/plain JSON): { token, action: 'ping' | 'pull' | 'push' | 'snapshot', changes? }
  *   Response: { ok: true, serverTime, data? } | { ok: false, error }
  *
  * Setup: run setupToken() once, then Deploy > Web app (Execute as: Me, Access: Anyone).
@@ -17,7 +17,7 @@ var SHEET_COLUMNS = {
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
   financialSnapshots: ['id', 'month', 'scheduledDate', 'capturedAt', 'data', 'updatedAt', 'deleted'],
-  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'updatedAt', 'deleted']
+  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'snapshotMode', 'updatedAt', 'deleted']
 };
 var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'];
 var NUMBER_FIELDS = ['amount', 'investmentQuantity', 'investmentUnitPrice', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier', 'snapshotDay'];
@@ -63,11 +63,13 @@ function handle_(req) {
       ensureSheets_();
       return { ok: true, serverTime: serverTime, data: readAll_() };
     case 'push':
+    case 'snapshot':
       var lock = LockService.getScriptLock();
       lock.waitLock(30000);
       try {
         ensureSheets_();
-        applyChanges_(req.changes || {});
+        if (req.action === 'snapshot') captureFinancialSnapshot_(new Date(), true);
+        else applyChanges_(req.changes || {});
         return { ok: true, serverTime: new Date().toISOString(), data: readAll_() };
       } finally {
         lock.releaseLock();
@@ -213,6 +215,9 @@ function upsertRows_(table, incoming) {
     if (table === 'appSettings' && rec.snapshotDay != null && (!Number.isInteger(Number(rec.snapshotDay)) || Number(rec.snapshotDay) < 1 || Number(rec.snapshotDay) > 31)) {
       throw new Error('Ngày snapshot phải từ 1 đến 31.');
     }
+    if (table === 'appSettings' && rec.snapshotMode != null && rec.snapshotMode !== 'auto' && rec.snapshotMode !== 'manual') {
+      throw new Error('Chế độ snapshot không hợp lệ.');
+    }
     if (table === 'financialSnapshots') {
       if (Object.prototype.hasOwnProperty.call(byId, id)) return;
       validateFinancialSnapshot_(rec);
@@ -309,16 +314,22 @@ function validateFinancialSnapshot_(rec) {
   });
 }
 
-function captureFinancialSnapshot_(now) {
+function captureFinancialSnapshot_(now, manual) {
   var date = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
   var month = date.slice(0, 7);
   var settings = readTable_('appSettings').filter(function (r) { return r.id === 'app-settings:shared' && !r.deleted; })[0];
+  var mode = settings && settings.snapshotMode === 'manual' ? 'manual' : 'auto';
+  if (manual && mode !== 'manual') throw new Error('Hãy chọn và lưu chế độ thủ công trước khi chụp.');
+  if (!manual && mode === 'manual') return;
   var day = settings && settings.snapshotDay ? settings.snapshotDay : 10;
   if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error('Ngày snapshot không hợp lệ.');
   var lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate();
-  if (Number(date.slice(8)) !== Math.min(day, lastDay)) return;
+  if (!manual && Number(date.slice(8)) !== Math.min(day, lastDay)) return;
   var id = 'financial:' + month;
-  if (readTable_('financialSnapshots').some(function (r) { return r.id === id; })) return;
+  if (readTable_('financialSnapshots').some(function (r) { return r.id === id; })) {
+    if (manual) throw new Error('Tháng này đã có snapshot, không thể ghi đè.');
+    return;
+  }
   var accounts = readTable_('accounts').filter(function (r) { return !r.deleted; });
   var balances = {};
   accounts.forEach(function (a) { balances[a.id] = a.openingBalance; });

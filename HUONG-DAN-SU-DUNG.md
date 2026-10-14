@@ -265,6 +265,8 @@ Lưu ý: dữ liệu vẫn gắn với trình duyệt bạn đã dùng, nên l�
 
 ## Snapshot và báo cáo tài sản
 
+Chọn chế độ **Tự động** để chụp theo lịch, hoặc **Thủ công** để hiện nút **Snapshot**. Khi bấm nút, app lưu chế độ thủ công và đồng bộ dữ liệu trước khi chụp vào tháng hiện tại theo giờ Việt Nam. Mỗi tháng chỉ chốt một lần. Thủ công không cần cài trigger; lịch tự động sẽ dừng sau khi chế độ thủ công được đồng bộ lên Sheet. Cả hai chế độ đều cần `Code.gs` mới và kết nối Google Sheet.
+
 Trong **Cài đặt → Chốt tài sản hằng tháng**, chọn ngày chụp (mặc định ngày 10) rồi lưu và đồng bộ. Cập nhật và triển khai `apps-script/Code.gs` mới, chạy `installSnapshotTrigger` một lần trong Apps Script để bật lịch; cũng có thể dùng menu **Montana → Bật lịch snapshot** trên Sheet.
 
 Hệ thống chụp khoảng 06–07 giờ Việt Nam vào ngày đã chọn, dùng dữ liệu trên Sheet kể cả khi app đóng. Hãy cập nhật định giá và đồng bộ trước ngày đó. Ngày vượt độ dài tháng được chuyển về ngày cuối tháng. Kỳ bỏ lỡ không được tạo bù.

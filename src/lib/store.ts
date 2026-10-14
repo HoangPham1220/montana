@@ -20,6 +20,7 @@ export interface Settings {
   moneyInputMultiplier: number
   moneyInputCurrencyCode: string
   snapshotDay: number
+  snapshotMode: 'auto' | 'manual'
 }
 
 export interface SyncState {
@@ -47,6 +48,7 @@ function appSettingsRecord(settings: Settings, updatedAt = EPOCH): AppSettingsRe
     moneyInputMultiplier: settings.moneyInputMultiplier,
     moneyInputCurrencyCode: settings.moneyInputCurrencyCode,
     snapshotDay: settings.snapshotDay,
+    snapshotMode: settings.snapshotMode,
     updatedAt,
   }
 }
@@ -69,7 +71,7 @@ function load(): State {
   const base: State = {
     tables: emptyTables(),
     dirty: emptyDirty(),
-    settings: { apiUrl: '', token: '', autoSync: true, moneyInputMultiplier: 1, moneyInputCurrencyCode: 'VND', snapshotDay: 10 },
+    settings: { apiUrl: '', token: '', autoSync: true, moneyInputMultiplier: 1, moneyInputCurrencyCode: 'VND', snapshotDay: 10, snapshotMode: 'auto' },
     sync: { status: 'idle', lastSyncAt: null, error: null },
   }
   try {
@@ -89,6 +91,7 @@ function load(): State {
         settings.moneyInputMultiplier = shared.moneyInputMultiplier
         settings.moneyInputCurrencyCode = shared.moneyInputCurrencyCode
         settings.snapshotDay = Number(shared.snapshotDay) || 10
+        settings.snapshotMode = shared.snapshotMode === 'manual' ? 'manual' : 'auto'
       }
       // Migration: state saved before "Nguồn tiền" existed has no accounts table.
       if (!saved.tables?.accounts?.length) {
@@ -242,7 +245,7 @@ export function importTables(incoming: Partial<Tables>): number {
   dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds]))
   const importedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
   const settings = importedSettings
-    ? { ...state.settings, autoSync: importedSettings.autoSync, moneyInputMultiplier: importedSettings.moneyInputMultiplier, moneyInputCurrencyCode: importedSettings.moneyInputCurrencyCode, snapshotDay: importedSettings.snapshotDay || 10 }
+    ? { ...state.settings, autoSync: importedSettings.autoSync, moneyInputMultiplier: importedSettings.moneyInputMultiplier, moneyInputCurrencyCode: importedSettings.moneyInputCurrencyCode, snapshotDay: importedSettings.snapshotDay || 10, snapshotMode: importedSettings.snapshotMode || 'auto' }
     : state.settings
   setState({ ...state, tables, dirty, settings })
   scheduleSync()
@@ -257,7 +260,8 @@ export function updateSettings(patch: Partial<Settings>) {
     ('autoSync' in patch && patch.autoSync !== shared?.autoSync) ||
     ('moneyInputMultiplier' in patch && patch.moneyInputMultiplier !== shared?.moneyInputMultiplier) ||
     ('moneyInputCurrencyCode' in patch && patch.moneyInputCurrencyCode !== shared?.moneyInputCurrencyCode) ||
-    ('snapshotDay' in patch && patch.snapshotDay !== shared?.snapshotDay)
+    ('snapshotDay' in patch && patch.snapshotDay !== shared?.snapshotDay) ||
+    ('snapshotMode' in patch && patch.snapshotMode !== shared?.snapshotMode)
   if (sharedChanged) upsert('appSettings', { ...appSettingsRecord(settings, new Date().toISOString()), deleted: false })
 }
 
@@ -281,6 +285,17 @@ async function call(req: ApiRequest): Promise<ApiResponse> {
   return (await res.json()) as ApiResponse
 }
 
+export async function takeManualSnapshot() {
+  if (!state.settings.apiUrl) throw new Error('Cần kết nối Google Sheet để chụp snapshot.')
+  await sync()
+  if (state.sync.status === 'error') throw new Error(state.sync.error ?? 'Không thể đồng bộ dữ liệu.')
+  if (pendingCount(state)) throw new Error('Dữ liệu vừa thay đổi. Hãy đồng bộ xong rồi chụp lại.')
+  const res = await call({ token: state.settings.token, action: 'snapshot' })
+  if (!res.ok) throw new Error(res.error)
+  if (!res.data?.financialSnapshots) throw new Error('Hãy cập nhật và triển khai Code.gs mới để chụp thủ công.')
+  setState({ ...state, tables: { ...state.tables, financialSnapshots: res.data.financialSnapshots.map((r) => normalize('financialSnapshots', r as unknown as Record<string, unknown>)) as Tables['financialSnapshots'] } })
+}
+
 export async function testConnection(): Promise<string> {
   const r = await call({ token: state.settings.token, action: 'ping' })
   if (!r.ok) throw new Error(r.error)
@@ -302,6 +317,7 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
     out.moneyInputMultiplier = Number(out.moneyInputMultiplier) || 1
     out.moneyInputCurrencyCode = String(out.moneyInputCurrencyCode || 'VND')
     out.snapshotDay = Number(out.snapshotDay) || 10
+    out.snapshotMode = out.snapshotMode === 'manual' ? 'manual' : 'auto'
   }
   if (table === 'accounts' || 'archived' in out) out.archived = toBool(out.archived)
   for (const k of ['id', 'updatedAt', 'date', 'name', 'note', 'categoryId', 'parentId', 'assetId', 'unit', 'color', 'icon', 'type', 'kind', 'accountId', 'toAccountId', 'moneyInputCurrencyCode']) {
@@ -399,7 +415,7 @@ async function doSync() {
       throw new Error('Apps Script is missing investmentQuantity and investmentUnitPrice. Update and redeploy apps-script/Code.gs to sync investment transactions.')
     }
 
-    if (!res.data.financialSnapshots || (changes.appSettings?.length && res.data.appSettings?.some((r) => !('snapshotDay' in r)))) {
+    if (!res.data.financialSnapshots || (changes.appSettings?.length && res.data.appSettings?.some((r) => !('snapshotDay' in r) || !('snapshotMode' in r)))) {
       throw new Error('Hãy cập nhật và triển khai Code.gs mới để đồng bộ snapshot và lịch chụp.')
     }
 
@@ -435,7 +451,7 @@ async function doSync() {
     dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds, ...reconciledAccountIds]))
     const sharedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
     const settings = sharedSettings
-      ? { ...state.settings, autoSync: sharedSettings.autoSync, moneyInputMultiplier: sharedSettings.moneyInputMultiplier, moneyInputCurrencyCode: sharedSettings.moneyInputCurrencyCode, snapshotDay: sharedSettings.snapshotDay || 10 }
+      ? { ...state.settings, autoSync: sharedSettings.autoSync, moneyInputMultiplier: sharedSettings.moneyInputMultiplier, moneyInputCurrencyCode: sharedSettings.moneyInputCurrencyCode, snapshotDay: sharedSettings.snapshotDay || 10, snapshotMode: sharedSettings.snapshotMode || 'auto' }
       : state.settings
     setState({
       ...state,

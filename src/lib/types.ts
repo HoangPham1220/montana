@@ -92,6 +92,7 @@ export interface AppSettingsRecord extends BaseRecord {
   moneyInputMultiplier: number
   moneyInputCurrencyCode: string
   snapshotDay: number
+  snapshotMode: 'auto' | 'manual'
 }
 
 export interface FinancialSnapshot extends BaseRecord {
@@ -134,7 +135,7 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
-  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'updatedAt', 'deleted'],
+  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'snapshotMode', 'updatedAt', 'deleted'],
   financialSnapshots: ['id', 'month', 'scheduledDate', 'capturedAt', 'data', 'updatedAt', 'deleted'],
 }
 
@@ -144,6 +145,7 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
 export type ApiRequest =
   | { token: string; action: 'ping' }
   | { token: string; action: 'pull' }
+  | { token: string; action: 'snapshot' }
   | { token: string; action: 'push'; changes: Partial<Tables> }
 
 export type ApiResponse =
