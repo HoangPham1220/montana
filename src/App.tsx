@@ -7,6 +7,7 @@ import Categories from './pages/Categories'
 import Assets from './pages/Assets'
 import Settings from './pages/Settings'
 import Guide from './pages/Guide'
+import Reports from './pages/Reports'
 import { getState, pendingCount, sync, useStore } from './lib/store'
 
 const NAV: { to: string; label: string; icon: string; mobile?: boolean }[] = [
@@ -15,6 +16,7 @@ const NAV: { to: string; label: string; icon: string; mobile?: boolean }[] = [
   { to: '/accounts', label: 'Nguồn tiền', icon: '👛' },
   { to: '/categories', label: 'Danh mục', icon: '🏷️', mobile: false },
   { to: '/assets', label: 'Tài sản', icon: '🏦' },
+  { to: '/reports', label: 'Báo cáo', icon: '📋' },
   { to: '/settings', label: 'Cài đặt', icon: '⚙️' },
 ]
 
@@ -95,6 +97,7 @@ export default function App() {
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/assets" element={<Assets />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/guide" element={<Guide />} />
             </Routes>

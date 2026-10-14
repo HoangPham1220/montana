@@ -16,10 +16,11 @@ var SHEET_COLUMNS = {
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
-  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted']
+  financialSnapshots: ['id', 'month', 'scheduledDate', 'capturedAt', 'data', 'updatedAt', 'deleted'],
+  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'updatedAt', 'deleted']
 };
-var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings'];
-var NUMBER_FIELDS = ['amount', 'investmentQuantity', 'investmentUnitPrice', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier'];
+var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'];
+var NUMBER_FIELDS = ['amount', 'investmentQuantity', 'investmentUnitPrice', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier', 'snapshotDay'];
 var BOOLEAN_FIELDS = ['deleted', 'archived', 'autoSync'];
 var DATE_FIELDS = ['date']; // yyyy-MM-dd text; other text fields that hold Dates become ISO strings
 
@@ -209,6 +210,13 @@ function upsertRows_(table, incoming) {
   incoming.forEach(function (rec) {
     if (!rec || rec.id == null || String(rec.id) === '') return;
     var id = String(rec.id);
+    if (table === 'appSettings' && rec.snapshotDay != null && (!Number.isInteger(Number(rec.snapshotDay)) || Number(rec.snapshotDay) < 1 || Number(rec.snapshotDay) > 31)) {
+      throw new Error('Ngày snapshot phải từ 1 đến 31.');
+    }
+    if (table === 'financialSnapshots') {
+      if (Object.prototype.hasOwnProperty.call(byId, id)) return;
+      validateFinancialSnapshot_(rec);
+    }
     var incomingUpd = toCell_('updatedAt', rec.updatedAt);
     if (byId.hasOwnProperty(id)) {
       var pos = byId[id];
@@ -271,5 +279,84 @@ function onOpen() {
     .createMenu('Montana')
     .addItem('Khởi tạo sheet', 'initSheets')
     .addItem('Tạo/hiện token', 'showToken')
+    .addItem('Bật lịch snapshot', 'installSnapshotTrigger')
     .addToUi();
+}
+
+
+// Snapshots are insert-only, including during backup restore.
+function validateFinancialSnapshot_(rec) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(rec.month) || rec.id !== 'financial:' + rec.month ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(rec.scheduledDate) || rec.scheduledDate.slice(0, 7) !== rec.month ||
+      !Number.isFinite(Date.parse(rec.capturedAt)) || rec.deleted || typeof rec.data !== 'string') {
+    throw new Error('Snapshot không hợp lệ.');
+  }
+  // shortcut: one JSON cell per month, split into detail rows if snapshots exceed 45,000 characters.
+  if (rec.data.length > 45000) throw new Error('Snapshot vượt giới hạn 45.000 ký tự.');
+  var data = JSON.parse(rec.data);
+  if (!data || !Array.isArray(data.accounts) || !Array.isArray(data.assets) || !Array.isArray(data.assetCategories)) {
+    throw new Error('Snapshot thiếu dữ liệu.');
+  }
+  data.accounts.forEach(function (a) {
+    if (!a || typeof a.id !== 'string' || typeof a.name !== 'string' || !Number.isFinite(a.currentBalance)) throw new Error('Số dư snapshot không hợp lệ.');
+  });
+  data.assets.forEach(function (a) {
+    if (!a || typeof a.id !== 'string' || typeof a.name !== 'string' || typeof a.categoryId !== 'string' || typeof a.unit !== 'string' ||
+        !Number.isFinite(a.quantity) || !Number.isFinite(a.costBasis) || !Number.isFinite(a.currentValue)) throw new Error('Tài sản snapshot không hợp lệ.');
+  });
+  data.assetCategories.forEach(function (c) {
+    if (!c || typeof c.id !== 'string' || typeof c.name !== 'string') throw new Error('Danh mục snapshot không hợp lệ.');
+  });
+}
+
+function captureFinancialSnapshot_(now) {
+  var date = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  var month = date.slice(0, 7);
+  var settings = readTable_('appSettings').filter(function (r) { return r.id === 'app-settings:shared' && !r.deleted; })[0];
+  var day = settings && settings.snapshotDay ? settings.snapshotDay : 10;
+  if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error('Ngày snapshot không hợp lệ.');
+  var lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate();
+  if (Number(date.slice(8)) !== Math.min(day, lastDay)) return;
+  var id = 'financial:' + month;
+  if (readTable_('financialSnapshots').some(function (r) { return r.id === id; })) return;
+  var accounts = readTable_('accounts').filter(function (r) { return !r.deleted; });
+  var balances = {};
+  accounts.forEach(function (a) { balances[a.id] = a.openingBalance; });
+  readTable_('transactions').forEach(function (t) {
+    if (t.deleted || t.date > date) return;
+    var from = t.accountId || 'acc-cash';
+    if (t.type === 'transfer') {
+      if (from === t.toAccountId) return;
+      if (Object.prototype.hasOwnProperty.call(balances, from)) balances[from] -= t.amount;
+      if (Object.prototype.hasOwnProperty.call(balances, t.toAccountId)) balances[t.toAccountId] += t.amount;
+    } else if (Object.prototype.hasOwnProperty.call(balances, from)) {
+      balances[from] += t.type === 'income' || t.type === 'adjustment' ? t.amount : -t.amount;
+    }
+  });
+  accounts.forEach(function (a) { a.currentBalance = balances[a.id]; });
+  var stamp = now.toISOString();
+  upsertRows_('financialSnapshots', [{
+    id: id, month: month, scheduledDate: date, capturedAt: stamp, updatedAt: stamp, deleted: false,
+    data: JSON.stringify({ accounts: accounts,
+      assets: readTable_('assets').filter(function (r) { return !r.deleted; }),
+      assetCategories: readTable_('assetCategories').filter(function (r) { return !r.deleted; }) })
+  }]);
+}
+
+function runFinancialSnapshot() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    ensureSheets_();
+    captureFinancialSnapshot_(new Date());
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function installSnapshotTrigger() {
+  if (!ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'runFinancialSnapshot'; })) {
+    ScriptApp.newTrigger('runFinancialSnapshot').timeBased().atHour(6).everyDays(1).inTimezone('Asia/Ho_Chi_Minh').create();
+  }
+  Logger.log('Đã bật lịch snapshot: kiểm tra hằng ngày khoảng 06–07 giờ Việt Nam.');
 }

@@ -19,6 +19,7 @@ export interface Settings {
   autoSync: boolean
   moneyInputMultiplier: number
   moneyInputCurrencyCode: string
+  snapshotDay: number
 }
 
 export interface SyncState {
@@ -45,6 +46,7 @@ function appSettingsRecord(settings: Settings, updatedAt = EPOCH): AppSettingsRe
     autoSync: settings.autoSync,
     moneyInputMultiplier: settings.moneyInputMultiplier,
     moneyInputCurrencyCode: settings.moneyInputCurrencyCode,
+    snapshotDay: settings.snapshotDay,
     updatedAt,
   }
 }
@@ -57,6 +59,7 @@ const emptyTables = (): Tables => ({
   assets: [],
   assetSnapshots: [],
   appSettings: [],
+  financialSnapshots: [],
 })
 
 const emptyDirty = (): Record<TableName, string[]> =>
@@ -66,7 +69,7 @@ function load(): State {
   const base: State = {
     tables: emptyTables(),
     dirty: emptyDirty(),
-    settings: { apiUrl: '', token: '', autoSync: true, moneyInputMultiplier: 1, moneyInputCurrencyCode: 'VND' },
+    settings: { apiUrl: '', token: '', autoSync: true, moneyInputMultiplier: 1, moneyInputCurrencyCode: 'VND', snapshotDay: 10 },
     sync: { status: 'idle', lastSyncAt: null, error: null },
   }
   try {
@@ -85,6 +88,7 @@ function load(): State {
         settings.autoSync = shared.autoSync
         settings.moneyInputMultiplier = shared.moneyInputMultiplier
         settings.moneyInputCurrencyCode = shared.moneyInputCurrencyCode
+        settings.snapshotDay = Number(shared.snapshotDay) || 10
       }
       // Migration: state saved before "Nguồn tiền" existed has no accounts table.
       if (!saved.tables?.accounts?.length) {
@@ -184,6 +188,7 @@ type Draft<T extends TableName> = Omit<RecordOf<T>, 'id' | 'updatedAt'> & { id?:
 
 /** Create or update a record. Returns the saved record. */
 export function upsert<T extends TableName>(table: T, draft: Draft<T>): RecordOf<T> {
+  if (table === 'financialSnapshots' && state.tables.financialSnapshots.some((r) => r.id === draft.id)) throw new Error('Snapshot đã chốt không thể sửa.')
   const record = { ...draft, id: draft.id ?? newId(), updatedAt: new Date().toISOString() } as RecordOf<T>
   const rows = state.tables[table] as RecordOf<T>[]
   const idx = rows.findIndex((r) => r.id === record.id)
@@ -194,6 +199,7 @@ export function upsert<T extends TableName>(table: T, draft: Draft<T>): RecordOf
 
 /** Soft delete. */
 export function remove(table: TableName, id: string) {
+  if (table === 'financialSnapshots') throw new Error('Snapshot đã chốt không thể xoá.')
   const rows = state.tables[table] as RecordOf<TableName>[]
   const now = new Date().toISOString()
   const nextRows = rows.map((r) => (r.id === id ? { ...r, deleted: true, updatedAt: now } : r))
@@ -224,7 +230,7 @@ export function importTables(incoming: Partial<Tables>): number {
       const rec = normalize(t, { updatedAt: new Date().toISOString(), ...raw })
       if (!rec.id) continue
       const cur = byId.get(rec.id)
-      if (cur && cur.updatedAt > rec.updatedAt) continue
+      if (cur && (t === 'financialSnapshots' || cur.updatedAt > rec.updatedAt)) continue
       byId.set(rec.id, rec)
       ids.push(rec.id)
       applied++
@@ -236,7 +242,7 @@ export function importTables(incoming: Partial<Tables>): number {
   dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds]))
   const importedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
   const settings = importedSettings
-    ? { ...state.settings, autoSync: importedSettings.autoSync, moneyInputMultiplier: importedSettings.moneyInputMultiplier, moneyInputCurrencyCode: importedSettings.moneyInputCurrencyCode }
+    ? { ...state.settings, autoSync: importedSettings.autoSync, moneyInputMultiplier: importedSettings.moneyInputMultiplier, moneyInputCurrencyCode: importedSettings.moneyInputCurrencyCode, snapshotDay: importedSettings.snapshotDay || 10 }
     : state.settings
   setState({ ...state, tables, dirty, settings })
   scheduleSync()
@@ -250,7 +256,8 @@ export function updateSettings(patch: Partial<Settings>) {
   const sharedChanged =
     ('autoSync' in patch && patch.autoSync !== shared?.autoSync) ||
     ('moneyInputMultiplier' in patch && patch.moneyInputMultiplier !== shared?.moneyInputMultiplier) ||
-    ('moneyInputCurrencyCode' in patch && patch.moneyInputCurrencyCode !== shared?.moneyInputCurrencyCode)
+    ('moneyInputCurrencyCode' in patch && patch.moneyInputCurrencyCode !== shared?.moneyInputCurrencyCode) ||
+    ('snapshotDay' in patch && patch.snapshotDay !== shared?.snapshotDay)
   if (sharedChanged) upsert('appSettings', { ...appSettingsRecord(settings, new Date().toISOString()), deleted: false })
 }
 
@@ -294,6 +301,7 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
     out.autoSync = 'autoSync' in out ? toBool(out.autoSync) : true
     out.moneyInputMultiplier = Number(out.moneyInputMultiplier) || 1
     out.moneyInputCurrencyCode = String(out.moneyInputCurrencyCode || 'VND')
+    out.snapshotDay = Number(out.snapshotDay) || 10
   }
   if (table === 'accounts' || 'archived' in out) out.archived = toBool(out.archived)
   for (const k of ['id', 'updatedAt', 'date', 'name', 'note', 'categoryId', 'parentId', 'assetId', 'unit', 'color', 'icon', 'type', 'kind', 'accountId', 'toAccountId', 'moneyInputCurrencyCode']) {
@@ -391,6 +399,10 @@ async function doSync() {
       throw new Error('Apps Script is missing investmentQuantity and investmentUnitPrice. Update and redeploy apps-script/Code.gs to sync investment transactions.')
     }
 
+    if (!res.data.financialSnapshots || (changes.appSettings?.length && res.data.appSettings?.some((r) => !('snapshotDay' in r)))) {
+      throw new Error('Hãy cập nhật và triển khai Code.gs mới để đồng bộ snapshot và lịch chụp.')
+    }
+
     // Merge server data with local state (local may have changed mid-flight).
     const tables = emptyTables()
     const dirty = emptyDirty()
@@ -409,7 +421,7 @@ async function doSync() {
       }
       for (const local of state.tables[t] as RecordOf<TableName>[]) {
         const remote = byId.get(local.id)
-        if (!remote || local.updatedAt > remote.updatedAt) byId.set(local.id, local)
+        if (!remote || (t !== 'financialSnapshots' && local.updatedAt > remote.updatedAt)) byId.set(local.id, local)
       }
       ;(tables as unknown as Record<string, unknown[]>)[t] = Array.from(byId.values())
       // Still dirty if edited after we pushed it.
@@ -423,7 +435,7 @@ async function doSync() {
     dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds, ...reconciledAccountIds]))
     const sharedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
     const settings = sharedSettings
-      ? { ...state.settings, autoSync: sharedSettings.autoSync, moneyInputMultiplier: sharedSettings.moneyInputMultiplier, moneyInputCurrencyCode: sharedSettings.moneyInputCurrencyCode }
+      ? { ...state.settings, autoSync: sharedSettings.autoSync, moneyInputMultiplier: sharedSettings.moneyInputMultiplier, moneyInputCurrencyCode: sharedSettings.moneyInputCurrencyCode, snapshotDay: sharedSettings.snapshotDay || 10 }
       : state.settings
     setState({
       ...state,

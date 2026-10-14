@@ -78,7 +78,7 @@ const ctx = {
     }),
   },
   LockService: { getScriptLock: () => ({ waitLock() {}, tryLock() { return true }, releaseLock() {} }) },
-  Utilities: { getUuid: () => 'uuid-1234', formatDate: (d) => d.toISOString().slice(0, 10) },
+  Utilities: { getUuid: () => 'uuid-1234', formatDate: (d, zone) => new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d) },
   Logger: { log() {} },
   Session: { getScriptTimeZone: () => 'Asia/Ho_Chi_Minh' },
   console, Date, JSON,
@@ -109,8 +109,8 @@ check('ping ok with serverTime', (() => { const r = send({ token: T, action: 'pi
 
 // ---------------------------------------------------------------- pull creates tabs
 let r = send({ token: T, action: 'pull' })
-check('pull ok and returns all 7 tables', r.ok && ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings'].every((t) => Array.isArray(r.data[t])), r.data && Object.keys(r.data))
-check('tabs created with header row', Object.keys(sheets).length === 7 && Object.keys(r.data).join() === 'accounts,categories,transactions,assetCategories,assets,assetSnapshots,appSettings' && sheets.transactions.data[0].join() === 'id,date,type,amount,categoryId,accountId,toAccountId,note,updatedAt,deleted' && sheets.accounts.data[0].join() === 'id,name,kind,openingBalance,color,icon,archived,updatedAt,deleted' && sheets.appSettings.data[0].join() === 'id,autoSync,moneyInputMultiplier,moneyInputCurrencyCode,updatedAt,deleted', sheets.transactions && sheets.transactions.data[0])
+check('pull ok and returns all 8 tables', r.ok && ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'].every((t) => Array.isArray(r.data[t])), r.data && Object.keys(r.data))
+check('tabs created with header row', Object.keys(sheets).length === 8 && Object.keys(r.data).join() === 'accounts,categories,transactions,assetCategories,assets,assetSnapshots,appSettings,financialSnapshots' && sheets.transactions.data[0].join() === 'id,date,type,amount,categoryId,accountId,toAccountId,assetId,investmentQuantity,investmentUnitPrice,note,updatedAt,deleted' && sheets.accounts.data[0].join() === 'id,name,kind,openingBalance,currentBalance,color,icon,archived,updatedAt,deleted' && sheets.appSettings.data[0].join() === 'id,autoSync,moneyInputMultiplier,moneyInputCurrencyCode,snapshotDay,updatedAt,deleted', sheets.transactions && sheets.transactions.data[0])
 
 // ---------------------------------------------------------------- push / LWW
 r = send({ token: T, action: 'push', changes: { transactions: [tx('a', 50000, '2026-09-30T01:00:00Z'), tx('b', 30000, '2026-09-30T01:00:00Z')] } })
@@ -164,14 +164,14 @@ check('transfer transaction round trips accountId/toAccountId', tr && tr.type ==
   r = send({ token: T, action: 'pull' })
   const o1 = r.data.transactions.find((t) => t.id === 'o1')
   const o2 = r.data.transactions.find((t) => t.id === 'o2')
-  check('migration: header gained accountId,toAccountId at the end', old.data[0].join() === 'id,date,type,amount,categoryId,note,updatedAt,deleted,accountId,toAccountId', old.data[0])
+  check('migration: header gained accountId,toAccountId at the end', old.data[0].join() === 'id,date,type,amount,categoryId,note,updatedAt,deleted,accountId,toAccountId,assetId,investmentQuantity,investmentUnitPrice', old.data[0])
   check('migration: old rows read accountId/toAccountId as "" (not undefined/null)', o1 && o2 && o1.accountId === '' && o1.toAccountId === '' && o2.accountId === '' && o2.toAccountId === '', [o1, o2])
   check('migration: old values intact', o1.amount === 12000 && o1.note === 'cũ 1' && o1.categoryId === 'cat-food' && o1.deleted === false && o2.amount === 900000 && o2.type === 'income' && o2.deleted === true && o2.date === '2026-08-02', [o1, o2])
   r = send({ token: T, action: 'push', changes: { transactions: [tx('o1', 34000, '2026-10-07T00:00:00Z', { accountId: 'acc2', note: 'sửa' }), tx('o3', 5, '2026-10-07T00:00:00Z', { accountId: 'acc1', toAccountId: 'acc2', type: 'transfer' })] } })
   const h = old.data[0]
   const rowOf = (id) => old.data.find((x, i) => i > 0 && x[h.indexOf('id')] === id)
   const w1 = rowOf('o1'), w2 = rowOf('o2'), w3 = rowOf('o3')
-  check('migration: update of old row lands in correct columns', w1[h.indexOf('amount')] === 34000 && w1[h.indexOf('accountId')] === 'acc2' && w1[h.indexOf('toAccountId')] === '' && w1[h.indexOf('note')] === 'sửa' && w1[h.indexOf('categoryId')] === 'cat-food' && w1[h.indexOf('updatedAt')] === '2026-10-07T00:00:00Z' && w1.length === 10, w1)
+  check('migration: update of old row lands in correct columns', w1[h.indexOf('amount')] === 34000 && w1[h.indexOf('accountId')] === 'acc2' && w1[h.indexOf('toAccountId')] === '' && w1[h.indexOf('note')] === 'sửa' && w1[h.indexOf('categoryId')] === 'cat-food' && w1[h.indexOf('updatedAt')] === '2026-10-07T00:00:00Z' && w1.length === 13, w1)
   check('migration: untouched old row unchanged; appended row correct', w2[h.indexOf('note')] === 'cũ 2' && w2[h.indexOf('amount')] === 900000 && w3[h.indexOf('toAccountId')] === 'acc2' && w3[h.indexOf('type')] === 'transfer', [w2, w3])
   check('migration: push response reads back merged rows', r.ok && r.data.transactions.find((t) => t.id === 'o1').accountId === 'acc2' && r.data.transactions.length === 3)
   // restore a fresh table so later tests are unaffected
@@ -212,7 +212,81 @@ check('setupToken keeps an existing token', ctx.setupToken() === 'kept')
 check('no token configured -> Unauthorized', (() => { delete props.API_TOKEN; return send({ token: '', action: 'ping' }).ok === false })())
 props.API_TOKEN = 'secret'
 ctx.onOpen()
-check('menu callbacks are public global functions', menuItems.length === 2 && menuItems.every((fn) => typeof ctx[fn] === 'function' && !fn.endsWith('_')), menuItems)
+check('menu callbacks are public global functions', menuItems.length === 3 && menuItems.every((fn) => typeof ctx[fn] === 'function' && !fn.endsWith('_')), menuItems)
+
+
+// ---------------------------------------------------------------- frozen financial snapshots
+// Isolate financial fixtures from the sync/migration checks above.
+for (const name of ['transactions', 'accounts', 'assets', 'assetCategories', 'appSettings', 'financialSnapshots']) delete sheets[name];
+send({ token: T, action: 'pull' });
+const seed = {
+  accounts: [
+    { id: 'acc-cash', name: 'Cash', openingBalance: 1000, currentBalance: 9999 },
+    { id: 'credit', name: 'Debt', openingBalance: -200, archived: true },
+    { id: 'gone', name: 'Deleted', openingBalance: 5000, deleted: true },
+  ],
+  assets: [{ id: 'gold', name: 'Gold', categoryId: 'metals', quantity: 2, unit: 'chi', costBasis: 300, currentValue: 400 }],
+  assetCategories: [{ id: 'metals', name: 'Metals' }],
+  transactions: [
+    tx('income', 100, '2026-01-01', { type: 'income' }),
+    tx('buy', 50, '2026-01-01', { type: 'investment' }),
+    tx('transfer', 40, '2026-01-01', { type: 'transfer', toAccountId: 'credit' }),
+    tx('future', 999, '2026-01-01', { type: 'income', date: '2027-01-01' }),
+    tx('deleted', 999, '2026-01-01', { deleted: true }),
+  ],
+};
+check('financial fixtures saved', send({ token: T, action: 'push', changes: seed }).ok);
+ctx.captureFinancialSnapshot_(new Date('2026-10-09T16:00:00Z'));
+let frozen = ctx.readTable_('financialSnapshots');
+check('does not capture before default day 10', frozen.length === 0);
+ctx.captureFinancialSnapshot_(new Date('2026-10-09T23:00:00Z'));
+frozen = ctx.readTable_('financialSnapshots');
+check('default day 10 uses Vietnam timezone', frozen.length === 1 && frozen[0].scheduledDate === '2026-10-10');
+const original = frozen[0].data;
+const payload = JSON.parse(original);
+check('balances recomputed, debt retained, deleted accounts excluded', payload.accounts.length === 2 && payload.accounts[0].currentBalance === 1010 && payload.accounts[1].currentBalance === -160, payload.accounts);
+check('asset details and category names frozen', payload.assets[0].costBasis === 300 && payload.assetCategories[0].name === 'Metals');
+send({ token: T, action: 'push', changes: { assets: [{ ...seed.assets[0], name: 'Changed', currentValue: 999, updatedAt: '2028' }] } });
+ctx.captureFinancialSnapshot_(new Date('2026-10-10T12:00:00Z'));
+check('retry and source edits do not overwrite snapshot', ctx.readTable_('financialSnapshots').length === 1 && ctx.readTable_('financialSnapshots')[0].data === original);
+check('client cannot overwrite or delete a closed snapshot', send({ token: T, action: 'push', changes: { financialSnapshots: [{ ...frozen[0], data: '{}', deleted: true, updatedAt: '2030' }] } }).data.financialSnapshots[0].data === original);
+check('invalid schedule rejected', !send({ token: T, action: 'push', changes: { appSettings: [{ id: 'app-settings:shared', snapshotDay: 32 }] } }).ok);
+send({ token: T, action: 'push', changes: { appSettings: [{ id: 'app-settings:shared', snapshotDay: 31 }] } });
+ctx.captureFinancialSnapshot_(new Date('2027-02-27T12:00:00Z'));
+check('does not capture before month end', ctx.readTable_('financialSnapshots').length === 1);
+ctx.captureFinancialSnapshot_(new Date('2027-02-28T12:00:00Z'));
+ctx.captureFinancialSnapshot_(new Date('2028-02-29T12:00:00Z'));
+check('day 31 clamps for February and leap year', ctx.readTable_('financialSnapshots').length === 3);
+ctx.captureFinancialSnapshot_(new Date('2028-03-01T12:00:00Z'));
+check('no invented backfill for missed months', ctx.readTable_('financialSnapshots').length === 3);
+const backup = { ...frozen[0], id: 'financial:2026-09', month: '2026-09', scheduledDate: '2026-09-10' };
+check('backup restores a missing snapshot', send({ token: T, action: 'push', changes: { financialSnapshots: [backup] } }).data.financialSnapshots.length === 4);
+check('malformed backup snapshot rejected', !send({ token: T, action: 'push', changes: { financialSnapshots: [{ ...backup, id: 'financial:2026-08', month: '2026-08', scheduledDate: '2026-08-10', data: '{}' }] } }).ok);
+const triggers = [];
+ctx.ScriptApp = {
+  getProjectTriggers: () => triggers,
+  newTrigger: (name) => ({ timeBased() { return this }, atHour() { return this }, everyDays() { return this }, inTimezone() { return this }, create() { triggers.push({ getHandlerFunction: () => name }) } }),
+};
+ctx.installSnapshotTrigger(); ctx.installSnapshotTrigger();
+check('installing schedule twice does not duplicate triggers', triggers.length === 1);
+const { parseSnapshot, snapshotTotals } = require('../src/lib/financialReports.ts');
+const totals = snapshotTotals(parseSnapshot(frozen[0]));
+check('report totals include negative debt without double counting investments', totals.cash === 850 && totals.invested === 400 && totals.cost === 300 && totals.total === 1250, totals);
+let rejected = false;
+try { parseSnapshot({ ...frozen[0], data: '{bad' }); } catch { rejected = true; }
+check('report rejects corrupted JSON', rejected);
+
+
+let invalidNumber = false;
+try { parseSnapshot({ ...frozen[0], data: JSON.stringify({ ...payload, accounts: [{ id: 'x', name: 'Bad', currentBalance: '100' }] }) }); } catch { invalidNumber = true; }
+check('report rejects unvalidated monetary values', invalidNumber);
+let oversized = false;
+try { ctx.validateFinancialSnapshot_({ ...backup, data: 'x'.repeat(45001) }); } catch { oversized = true; }
+check('oversized snapshot fails instead of truncating data', oversized);
+const ts = require('typescript');
+const ioExports = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', 'src/components/settings/dataIO.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: ioExports, require: () => ({}) });
+check('CSV neutralizes spreadsheet formulas and preserves negative numbers', ioExports.csvCell('=1+1') === "'=1+1" && ioExports.csvCell(-200) === '-200' && ioExports.csvCell('a,b') === '"a,b"');
 
 console.log(failed ? `\n${failed} check(s) FAILED` : '\nAll checks PASSED')
 process.exitCode = failed ? 1 : 0

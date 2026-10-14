@@ -262,3 +262,13 @@ Montana là web app nên bạn chỉ cần tạo lối tắt:
 - **Android (Chrome):** mở địa chỉ app → menu **⋮** → **Thêm vào Màn hình chính** (hoặc **Cài đặt ứng dụng**).
 
 Lưu ý: dữ liệu vẫn gắn với trình duyệt bạn đã dùng, nên lối tắt và trình duyệt có thể có kho dữ liệu riêng trên một số máy. Cách chắc chắn nhất là kết nối Google Sheet với cùng URL + token rồi đồng bộ.
+
+## Snapshot và báo cáo tài sản
+
+Trong **Cài đặt → Chốt tài sản hằng tháng**, chọn ngày chụp (mặc định ngày 10) rồi lưu và đồng bộ. Cập nhật và triển khai `apps-script/Code.gs` mới, chạy `installSnapshotTrigger` một lần trong Apps Script để bật lịch; cũng có thể dùng menu **Montana → Bật lịch snapshot** trên Sheet.
+
+Hệ thống chụp khoảng 06–07 giờ Việt Nam vào ngày đã chọn, dùng dữ liệu trên Sheet kể cả khi app đóng. Hãy cập nhật định giá và đồng bộ trước ngày đó. Ngày vượt độ dài tháng được chuyển về ngày cuối tháng. Kỳ bỏ lỡ không được tạo bù.
+
+Trang **Báo cáo** cho xem số liệu đã chốt, chi tiết tài sản/nguồn tiền, phân bổ và xuất CSV. Chọn chu kỳ tháng/quý/năm để so sánh với snapshot cách 1/3/12 tháng. Thiếu kỳ so sánh thì chỉ hiển thị số cuối kỳ. Đây là số tại ngày chụp, không phải số cuối tháng dương lịch; mức tăng tài sản không đồng nghĩa lãi đầu tư.
+
+Snapshot gồm cả nguồn tiền lưu trữ và số dư nợ âm. Sửa giao dịch, đổi tên hoặc xoá tài sản sau đó không sửa snapshot đã chốt. JSON backup chứa snapshot; nhập lại chỉ bổ sung kỳ chưa có. Không chỉnh sửa trực tiếp tab `financialSnapshots` nếu muốn giữ nguyên lịch sử.

@@ -52,6 +52,7 @@ export function DataTools() {
       <Modal open={!!pending} title="Nhập dữ liệu từ JSON" onClose={() => setPending(null)}>
         <p className="text-sm">
           File <b>{pending?.name}</b> có {pending ? countRecords(pending.tables) : 0} bản ghi. Bản ghi mới được thêm vào; bản ghi trùng id chỉ bị thay khi bản trong file không cũ hơn bản đang có trên máy.
+          {' '}Snapshot đã chốt chỉ được thêm khi kỳ đó chưa có, không ghi đè bản đang lưu.
         </p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setPending(null)}>Huỷ</Button>

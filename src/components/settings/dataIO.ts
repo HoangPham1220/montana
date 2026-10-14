@@ -3,6 +3,7 @@ import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { getState, importTables as importIntoStore } from '../../lib/store'
 import { today } from '../../lib/format'
 import { categoryLabel } from '../../lib/categoryTree'
+import { parseSnapshot } from '../../lib/financialReports'
 
 export function download(filename: string, content: string, mime: string) {
   const url = URL.createObjectURL(new Blob([content], { type: mime }))
@@ -21,8 +22,8 @@ export function exportJson() {
   download(`montana-backup-${today()}.json`, JSON.stringify(payload, null, 2), 'application/json')
 }
 
-const csvCell = (v: string | number) => {
-  const s = String(v)
+export const csvCell = (v: string | number) => {
+  const s = typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : String(v)
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
@@ -69,6 +70,7 @@ export function parseBackup(text: string): Partial<Tables> {
     found = true
   }
   if (!found) throw new Error('Không tìm thấy bảng dữ liệu nào trong file.')
+  out.financialSnapshots?.forEach(parseSnapshot)
   return out
 }
 

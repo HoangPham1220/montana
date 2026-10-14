@@ -77,6 +77,17 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |
 | `assets` | id, name, categoryId, quantity, unit, costBasis, currentPrice, currentValue, note, updatedAt, deleted |
 | `assetSnapshots` | id, assetId, date, value, updatedAt, deleted |
-| `appSettings` | id, autoSync, moneyInputMultiplier, moneyInputCurrencyCode, updatedAt, deleted |
+| `appSettings` | id, autoSync, moneyInputMultiplier, moneyInputCurrencyCode, snapshotDay, updatedAt, deleted |
+| `financialSnapshots` | id, month, scheduledDate, capturedAt, data, updatedAt, deleted |
+
+## Snapshot tài sản và báo cáo
+
+- Trong **Cài đặt → Chốt tài sản hằng tháng**, chọn ngày 1–31 (mặc định 10), lưu và đồng bộ. Ngày 29–31 được chuyển về ngày cuối tháng nếu cần.
+- Cập nhật `apps-script/Code.gs`, triển khai **New version**, rồi chạy `installSnapshotTrigger()` một lần trong Apps Script và cấp quyền. Có thể dùng menu **Montana → Bật lịch snapshot** trong Sheet sau khi tải lại. Chạy lại không tạo lịch trùng cho cùng người cài đặt.
+- Lịch kiểm tra mỗi ngày khoảng 06–07 giờ Việt Nam, chụp vào ngày đã chọn kể cả khi app đóng. Cần đồng bộ và cập nhật định giá trước lịch chụp. Snapshot dùng giao dịch đã lưu trên Sheet để tính số dư đến ngày chụp, gồm cả nguồn tiền lưu trữ và số dư nợ âm; giá trị đầu tư dùng định giá đã nhập.
+- Mỗi tháng lưu một bản sao tài sản, nguồn tiền và danh mục trong `financialSnapshots.data` (JSON). App/API không sửa hoặc xoá bản đã tồn tại, kể cả khi nhập backup. Chủ Sheet vẫn có thể sửa trực tiếp nên tránh chỉnh tab này.
+- **Báo cáo** so sánh snapshot cách 1/3/12 tháng, xem phân bổ, chi tiết và xuất CSV. Đây là chu kỳ theo ngày chụp, không phải cuối tháng/quý/năm dương lịch. Thiếu snapshot thì báo thiếu, không tự dựng dữ liệu hoặc tạo bù kỳ cũ.
+- JSON backup bao gồm snapshot; nhập lại chỉ thêm kỳ chưa có. Mỗi snapshot giới hạn 45.000 ký tự JSON; vượt giới hạn sẽ báo lỗi trong Apps Script và không lưu bản thiếu.
+- Nếu thay đổi ngày chụp sau khi đã qua ngày mới trong tháng, kỳ đó không được tạo bù. Thay đổi lịch không sửa kỳ đã chốt. Biến động tài sản không đồng nghĩa lợi nhuận đầu tư.
 
 Ghi chú: `date` định dạng `YYYY-MM-DD`; `id`, `date`, `updatedAt` và các cột văn bản được lưu dạng text để Sheets không tự chuyển thành ngày/công thức; `deleted` và `archived` là TRUE/FALSE; `type` của giao dịch là `expense`, `income` hoặc `transfer` (chuyển tiền: `accountId` -> `toAccountId`); `kind` của nguồn tiền là `cash`, `bank`, `ewallet` hoặc `credit`; `openingBalance` có thể âm; sheet cũ thiếu cột `accountId`/`toAccountId` sẽ được script tự thêm vào cuối (dòng cũ để trống); số tiền tính bằng VND.

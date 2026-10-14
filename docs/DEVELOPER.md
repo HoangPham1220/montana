@@ -118,7 +118,9 @@ Quy ước chung (`BaseRecord`):
 
 **`appSettings`** (cấu hình chung, không chứa thông tin xác thực): một dòng `id: 'app-settings:shared'`, `autoSync: boolean`, `moneyInputMultiplier: number`, `moneyInputCurrencyCode: string`. `apiUrl` và `token` chỉ lưu cục bộ vì cần có sẵn trước khi app kết nối được với Sheet.
 
-`Tables` là object `{ accounts, categories, transactions, assetCategories, assets, assetSnapshots, appSettings }`; `TableName = keyof Tables`; `RecordOf<T>` = kiểu phần tử của bảng `T`; `TABLE_NAMES` là mảng thứ tự duyệt.
+**`financialSnapshots`**: `id: financial:YYYY-MM`, `month`, `scheduledDate`, `capturedAt`, `data` (JSON chứa bản sao `accounts`, `assets`, `assetCategories`). Bản ghi chỉ được thêm, không cập nhật/xoá qua app/API/import. Một ô JSON giới hạn 45.000 ký tự; vượt giới hạn phải chuyển sang bảng chi tiết. `appSettings.snapshotDay` là ngày chụp 1–31, mặc định 10. `installSnapshotTrigger()` cài lịch kiểm tra mỗi ngày khoảng 06–07 giờ Việt Nam; `runFinancialSnapshot()` dùng cùng script lock với API ghi dữ liệu. Không chụp bù ngày đã qua.
+
+`Tables` là object `{ accounts, categories, transactions, assetCategories, assets, assetSnapshots, appSettings, financialSnapshots }`; `TableName = keyof Tables`; `RecordOf<T>` = kiểu phần tử của bảng `T`; `TABLE_NAMES` là mảng thứ tự duyệt.
 
 ### SHEET_COLUMNS
 
@@ -130,7 +132,8 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   assetCategories: ['id','name','color','targetPercent','updatedAt','deleted'],
   assets:          ['id','name','categoryId','quantity','unit','costBasis','currentValue','note','updatedAt','deleted'],
   assetSnapshots:  ['id','assetId','date','value','updatedAt','deleted'],
-  appSettings:    ['id','autoSync','moneyInputMultiplier','moneyInputCurrencyCode','updatedAt','deleted'],
+  appSettings:    ['id','autoSync','moneyInputMultiplier','moneyInputCurrencyCode','snapshotDay','updatedAt','deleted'],
+  financialSnapshots: ['id','month','scheduledDate','capturedAt','data','updatedAt','deleted'],
 }
 ```
 

@@ -91,6 +91,15 @@ export interface AppSettingsRecord extends BaseRecord {
   autoSync: boolean
   moneyInputMultiplier: number
   moneyInputCurrencyCode: string
+  snapshotDay: number
+}
+
+export interface FinancialSnapshot extends BaseRecord {
+  month: string
+  scheduledDate: string
+  capturedAt: string
+  /** Frozen JSON containing accounts, assets and assetCategories. */
+  data: string
 }
 
 export interface Tables {
@@ -101,6 +110,7 @@ export interface Tables {
   assets: Asset[]
   assetSnapshots: AssetSnapshot[]
   appSettings: AppSettingsRecord[]
+  financialSnapshots: FinancialSnapshot[]
 }
 
 export type TableName = keyof Tables
@@ -114,6 +124,7 @@ export const TABLE_NAMES: TableName[] = [
   'assets',
   'assetSnapshots',
   'appSettings',
+  'financialSnapshots',
 ]
 
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
@@ -123,7 +134,8 @@ export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
-  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'updatedAt', 'deleted'],
+  appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'updatedAt', 'deleted'],
+  financialSnapshots: ['id', 'month', 'scheduledDate', 'capturedAt', 'data', 'updatedAt', 'deleted'],
 }
 
 // ---- Apps Script API contract ----
