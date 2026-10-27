@@ -7,7 +7,7 @@ export interface FloatingAction {
   onSelect: () => void
 }
 
-export default function FloatingActionMenu({ actions, label = 'Thêm' }: { actions: FloatingAction[]; label?: string }) {
+export default function FloatingActionMenu({ actions, label = 'Thêm', buttonClassName = 'bg-[#c6e848] text-[#202b16] hover:bg-[#b8d83f]' }: { actions: FloatingAction[]; label?: string; buttonClassName?: string }) {
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
 
@@ -23,7 +23,7 @@ export default function FloatingActionMenu({ actions, label = 'Thêm' }: { actio
               onClick={() => { close(); action.onSelect() }}
               className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition hover:bg-slate-50 active:scale-[0.99] dark:hover:bg-slate-800"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-xl text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">{action.icon}</span>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#edf4dc] text-xl text-[#52672b] dark:bg-[#354a2a] dark:text-lime-200">{action.icon}</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{action.label}</span>
                 {action.description && <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{action.description}</span>}
@@ -38,7 +38,7 @@ export default function FloatingActionMenu({ actions, label = 'Thêm' }: { actio
         aria-label={label}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className={`fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-3xl leading-none text-white shadow-lg shadow-emerald-900/25 transition hover:bg-emerald-700 active:scale-95 ${open ? 'rotate-45' : ''}`}
+        className={`fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full text-3xl leading-none shadow-lg shadow-emerald-900/25 transition active:scale-95 ${buttonClassName} ${open ? 'rotate-45' : ''}`}
       >
         +
       </button>

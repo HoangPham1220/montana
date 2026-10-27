@@ -8,7 +8,7 @@ export default function SummaryCards({ value, invested, cost }: { value: number;
   const sign = pl > 0 ? '+' : ''
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <Card title="Tổng tài sản">
+      <Card title="Tổng tài sản" className="!bg-gradient-to-br from-[#d9ef77] to-[#a6ddc2] !text-[#24331c] dark:from-[#66812c] dark:to-[#245d4e] dark:!text-white">
         <p className="text-2xl font-bold">{formatVND(value)}</p>
         <p className="text-xs text-slate-400">Gồm cả Nguồn tiền</p>
       </Card>

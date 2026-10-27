@@ -43,7 +43,7 @@ export default function Accounts() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-bold">Nguồn tiền</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Nguồn tiền</h1>
         <Button onClick={() => setForm({ editing: null })} className="hidden sm:inline-flex">+ Thêm nguồn tiền</Button>
       </div>
       <FloatingActionMenu

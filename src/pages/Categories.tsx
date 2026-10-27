@@ -77,7 +77,7 @@ export default function Categories() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Danh mục</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Danh mục</h1>
       {section('Danh mục chi', 'expense', expense)}
       {section('Danh mục thu', 'income', income)}
       <CategoryForm

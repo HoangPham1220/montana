@@ -27,7 +27,7 @@ export default function Reports() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Báo cáo tài sản</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Báo cáo tài sản</h1>
       <p className="text-sm text-slate-500">Số liệu đã chốt tại ngày chụp, gồm cả nguồn tiền đã lưu trữ. Tháng, quý và năm so sánh với snapshot cách 1, 3 và 12 tháng; không phải số liệu cuối kỳ dương lịch.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Chu kỳ so sánh"><Select value={months} onChange={(e) => setMonths(Number(e.target.value))}>

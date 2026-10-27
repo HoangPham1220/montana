@@ -62,7 +62,7 @@ export default function Assets() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Tài sản</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tài sản</h1>
       <SummaryCards value={totalValue} invested={totalInvested} cost={totalCost} />
       <AllocationCard slices={slices} total={totalValue} />
       <HistoryCard points={history} />

@@ -4,5 +4,9 @@
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-[#f5f7f1] text-[#252b20] dark:bg-slate-950 dark:text-slate-100;
 }
+
+::selection { background: #d9ef77; color: #24331c; }
+button, a, input, select, textarea { accent-color: #718e2e; }
+:focus-visible { outline: 2px solid #718e2e; outline-offset: 2px; }

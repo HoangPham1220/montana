@@ -191,7 +191,7 @@ export default function Guide() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <h1 className="text-xl font-bold">Hướng dẫn sử dụng</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hướng dẫn sử dụng</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Montana giúp bạn ghi thu chi, đặt ngân sách và theo dõi tài sản cá nhân. Chọn một mục bên dưới hoặc gõ từ khoá để tìm nhanh.
         </p>

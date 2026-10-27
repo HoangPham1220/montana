@@ -13,7 +13,7 @@ interface Props {
 
 export default function AccountCard({ account, balance, onTransfer, onHistory, onEdit }: Props) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 ${account.archived ? 'opacity-70' : ''}`}>
+    <div className={`rounded-2xl bg-white p-5 dark:bg-slate-900 ${account.archived ? 'opacity-70' : ''}`}>
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl" style={{ background: `${account.color}22`, border: `1px solid ${account.color}` }}>
           {account.icon}

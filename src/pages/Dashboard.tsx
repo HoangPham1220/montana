@@ -91,13 +91,13 @@ export default function Dashboard() {
 
   if (transactions.length === 0 && assets.length === 0) {
     return (
-      <div className="mx-auto max-w-md py-10 text-center">
-        <div className="text-5xl">👋</div>
-        <h1 className="mt-3 text-xl font-bold">Chào mừng đến với Montana</h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+      <div className="mx-auto max-w-md rounded-2xl bg-gradient-to-br from-[#d9ef77] to-[#a6ddc2] px-6 py-12 text-center text-[#24331c] dark:from-[#66812c] dark:to-[#245d4e] dark:text-white">
+        <h1 className="text-2xl font-bold tracking-tight">Chào mừng đến với Montana</h1>
+        <p className="mt-3 text-sm text-[#34462d] dark:text-slate-100">
           Chưa có dữ liệu nào. Hãy thêm giao dịch đầu tiên, hoặc kết nối Google Sheet để tải dữ liệu đã lưu về máy.
         </p>
-        <div className="mt-5 flex justify-center">
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button onClick={() => openNewTransaction('expense')}>Thêm giao dịch</Button>
           <Link to="/settings"><Button variant="secondary">Kết nối Google Sheet</Button></Link>
         </div>
         <FloatingActionMenu actions={quickActions} label="Thêm giao dịch" />
@@ -109,7 +109,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold">Tổng quan</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tổng quan</h1>
         <div className="flex min-w-0 items-center justify-between gap-1 sm:justify-end">
           <Button variant="secondary" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Tháng trước">‹</Button>
           <button

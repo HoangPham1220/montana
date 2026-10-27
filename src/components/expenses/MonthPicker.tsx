@@ -3,9 +3,9 @@ import { monthLabel, shiftMonth } from '../../lib/format'
 // Month navigator. `value` is YYYY-MM.
 export default function MonthPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const btn =
-    'flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+    'flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl text-[#252b20] hover:bg-[#e9eedc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#596d24] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'
   return (
-    <div className="inline-flex items-center gap-2">
+    <div className="inline-flex items-center gap-1 rounded-full bg-[#edf1e7] p-1 dark:bg-slate-900">
       <button type="button" className={btn} onClick={() => onChange(shiftMonth(value, -1))} aria-label="Tháng trước">
         ‹
       </button>
