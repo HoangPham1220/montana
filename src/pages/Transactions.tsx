@@ -12,6 +12,7 @@ import MonthPicker from '../components/expenses/MonthPicker'
 import TransactionForm from '../components/expenses/TransactionForm'
 import CategoryDot from '../components/expenses/CategoryDot'
 import FloatingActionMenu from '../components/ui/FloatingActionMenu'
+import { SpendDonut } from '../components/dashboard/Charts'
 
 
 export default function Transactions() {
@@ -78,6 +79,13 @@ export default function Transactions() {
     return Array.from(map, ([date, items]) => ({ date, items, total: items.reduce((s, t) => s + dayTotal(t), 0) }))
   }, [inMonth, typeFilter, accountFilter, categoryFilter, search, selectedTagIds, catById, tagById])
 
+  const tagFilterActive = selectedTagIds.length > 0 || search.trim().startsWith('#')
+  const matchedExpense = groups.reduce((total, group) => total + group.items.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0), 0)
+  const tagSlices = [
+    { id: 'matched', name: 'Khớp bộ lọc', color: '#526f28', value: matchedExpense },
+    { id: 'remaining', name: 'Chi còn lại', color: '#cbd8be', value: summary.expense - matchedExpense },
+  ]
+
   const filterCats = useMemo(
     () => categories.filter((c) => typeFilter === 'all' || c.type === typeFilter),
     [categories, typeFilter],
@@ -105,6 +113,7 @@ export default function Transactions() {
 
       <div className="flex justify-center sm:justify-start"><MonthPicker value={month} onChange={setMonth} /></div>
 
+      <div className={tagFilterActive ? "grid gap-3 md:grid-cols-2" : ""}>
       <section className="rounded-2xl bg-gradient-to-br from-[#d9ef77] to-[#a6ddc2] p-5 text-[#24331c] sm:p-7 dark:from-[#66812c] dark:to-[#245d4e] dark:text-white">
         <p className="text-sm font-medium">Tổng kết tháng · {accountFilter ? accLabel(accountFilter) : 'Tất cả nguồn tiền'}</p>
         <p className="mt-5 text-sm font-medium">Chênh lệch thu − chi</p>
@@ -114,6 +123,19 @@ export default function Transactions() {
           <Stat label="Tổng chi" value={formatVND(summary.expense)} />
         </div>
       </section>
+
+      {tagFilterActive && <section aria-label="Tỷ lệ chi theo bộ lọc" className="min-w-0 rounded-2xl bg-white p-5 dark:bg-slate-900">
+        <h2 className="text-base font-bold">Chi theo bộ lọc</h2>
+        {summary.expense > 0 ? <div aria-hidden="true"><SpendDonut data={tagSlices} total={summary.expense} /></div> : <p className="py-8 text-center text-sm text-slate-600 dark:text-slate-300">Chưa có khoản chi trong tháng.</p>}
+        <p className="text-sm font-semibold">Tổng chi: {formatVND(summary.expense)}</p>
+        <ul className="mt-3 space-y-2 text-sm">
+          {tagSlices.map((slice) => <li key={slice.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <span className="flex items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slice.color }} />{slice.name}</span>
+            <span className="font-semibold tabular-nums">{formatVND(slice.value)} · {summary.expense ? Math.round(slice.value / summary.expense * 1000) / 10 : 0}%</span>
+          </li>)}
+        </ul>
+      </section>}
+      </div>
 
       <section className="space-y-3" aria-label="Lọc giao dịch">
         <div className="flex gap-1 overflow-x-auto rounded-full bg-[#e9eee3] p-1 dark:bg-slate-800">
