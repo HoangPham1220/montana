@@ -16,6 +16,7 @@ import FloatingActionMenu from '../components/ui/FloatingActionMenu'
 export default function Transactions() {
   const transactions = useTable('transactions')
   const categories = useTable('categories')
+  const tags = useTable('tags')
   const assets = useTable('assets')
   const [month, setMonth] = useState(monthOf(today()))
   const [searchParams] = useSearchParams()
@@ -29,6 +30,7 @@ export default function Transactions() {
   const [newType, setNewType] = useState<TransactionType>('expense')
   const [filtersOpen, setFiltersOpen] = useState(false)
 
+  const tagById = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags])
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const accById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
   const assetById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets])
@@ -53,12 +55,12 @@ export default function Transactions() {
   }, [inMonth, accountFilter])
 
   const groups = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim().toLowerCase().normalize('NFC')
     const filtered = inMonth
       .filter((t) => typeFilter === 'all' || t.type === typeFilter)
       .filter((t) => !accountFilter || txAccountId(t) === accountFilter || t.toAccountId === accountFilter)
       .filter((t) => !categoryFilter || t.categoryId === categoryFilter || catById.get(t.categoryId)?.parentId === categoryFilter)
-      .filter((t) => !q || (t.note ?? '').toLowerCase().includes(q))
+      .filter((t) => !q || (q.startsWith('#') ? (t.tagIds ?? []).some((id) => tagById.get(id)?.name.includes(q.slice(1))) : (t.note ?? '').toLowerCase().includes(q)))
       .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
     const map = new Map<string, Transaction[]>()
     for (const t of filtered) map.set(t.date, [...(map.get(t.date) ?? []), t])
@@ -67,7 +69,7 @@ export default function Transactions() {
       return t.type === 'income' ? t.amount : t.type === 'expense' ? -t.amount : 0
     }
     return Array.from(map, ([date, items]) => ({ date, items, total: items.reduce((s, t) => s + dayTotal(t), 0) }))
-  }, [inMonth, typeFilter, accountFilter, categoryFilter, search, catById])
+  }, [inMonth, typeFilter, accountFilter, categoryFilter, search, catById, tagById])
 
   const filterCats = useMemo(
     () => categories.filter((c) => typeFilter === 'all' || c.type === typeFilter),
@@ -113,7 +115,7 @@ export default function Transactions() {
           ))}
         </div>
         <div className="flex gap-2">
-          <Input className="min-w-0" type="search" aria-label="Tìm ghi chú" placeholder="Tìm ghi chú..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="min-w-0" type="search" aria-label="Tìm ghi chú hoặc thẻ" placeholder="Tìm ghi chú hoặc #thẻ..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)} className="shrink-0 rounded-full bg-[#e9eee3] px-4 text-sm font-semibold text-[#33432a] hover:bg-[#dce5d4] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Bộ lọc{(accountFilter || categoryFilter) ? ' •' : ''}</button>
         </div>
         {filtersOpen && <div className="grid gap-2 sm:grid-cols-2">
@@ -184,6 +186,7 @@ export default function Transactions() {
                           {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : isAdjustment ? t.note || 'Điều chỉnh số dư' : isInvestment ? `Đầu tư: ${assetById.get(t.assetId ?? '')?.name ?? 'Tài sản'}` : categoryLabel(c, categories)}
                         </span>
                         {!isTransfer && <span className="block truncate text-xs text-slate-600 dark:text-slate-400">{accLabel(t.accountId)}</span>}
+                        {(t.tagIds ?? []).length > 0 && <span className="block break-all text-xs text-[#52672b] dark:text-lime-300">{(t.tagIds ?? []).map((id) => tagById.get(id)).filter(Boolean).map((tag) => `#${tag!.name}`).join(' ')}</span>}
                         {t.note && !isAdjustment && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{t.note}</span>}
                       </span>
                       <span className={`max-w-[55%] break-words text-right text-sm font-semibold tabular-nums ${amountCls}`}>{amountText}</span>

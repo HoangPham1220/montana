@@ -1,15 +1,21 @@
 import { useMemo, useState } from 'react'
-import { useTable } from '../lib/store'
+import { upsert, useTable } from '../lib/store'
+import { saveTag, tagUsage } from '../lib/tags'
 import { formatVND, monthOf, today } from '../lib/format'
 import { categorySpend } from '../lib/categoryTree'
-import type { Category, TxType } from '../lib/types'
-import { Button, Card, EmptyState } from '../components/ui'
+import type { Category, Tag, TxType } from '../lib/types'
+import { Button, Card, EmptyState, Input } from '../components/ui'
 import CategoryForm from '../components/expenses/CategoryForm'
 import CategoryDot from '../components/expenses/CategoryDot'
 
 export default function Categories() {
   const categories = useTable('categories')
   const transactions = useTable('transactions')
+  const tags = useTable('tags')
+  const [tagName, setTagName] = useState('')
+  const [editingTag, setEditingTag] = useState<Tag | null>(null)
+  const [tagError, setTagError] = useState('')
+  const usage = tagUsage(transactions)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
   const [newType, setNewType] = useState<TxType>('expense')
@@ -80,6 +86,22 @@ export default function Categories() {
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Danh mục</h1>
       {section('Danh mục chi', 'expense', expense)}
       {section('Danh mục thu', 'income', income)}
+      <Card title="Thẻ (Tag)">
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); try { saveTag(tagName, editingTag ?? undefined); setEditingTag(null); setTagName(''); setTagError('') } catch (error) { setTagError((error as Error).message) } }}>
+          <Input aria-label="Tên thẻ" placeholder="Tên thẻ" value={tagName} onChange={(e) => setTagName(e.target.value)} className="min-w-0 flex-1" />
+          <Button type="submit">{editingTag ? 'Lưu' : 'Thêm'}</Button>
+          {editingTag && <Button type="button" variant="secondary" onClick={() => { setEditingTag(null); setTagName(''); setTagError('') }}>Hủy</Button>}
+        </form>
+        {tagError && <p role="alert" className="mt-2 text-sm text-rose-600">{tagError}</p>}
+        {tags.length === 0 && <EmptyState>Chưa có thẻ.</EmptyState>}
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          {[...tags].sort((a, b) => Number(a.archived) - Number(b.archived) || a.name.localeCompare(b.name)).map((tag) => <li key={tag.id} className="flex flex-wrap items-center gap-2 py-3 text-sm">
+            <span className="min-w-0 flex-1 break-all font-medium">#{tag.name} {tag.archived && '(đã lưu trữ)'} <span className="font-normal text-slate-500">· {usage.get(tag.id) ?? 0} giao dịch</span></span>
+            <Button variant="secondary" className="!px-2 !py-1 text-xs" onClick={() => { setEditingTag(tag); setTagName(tag.name); setTagError('') }}>Đổi tên</Button>
+            <Button variant="secondary" className="!px-2 !py-1 text-xs" onClick={() => upsert('tags', { ...tag, archived: !tag.archived })}>{tag.archived ? 'Khôi phục' : 'Lưu trữ'}</Button>
+          </li>)}
+        </ul>
+      </Card>
       <CategoryForm
         open={formOpen}
         editing={editing}

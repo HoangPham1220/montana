@@ -109,8 +109,8 @@ check('ping ok with serverTime', (() => { const r = send({ token: T, action: 'pi
 
 // ---------------------------------------------------------------- pull creates tabs
 let r = send({ token: T, action: 'pull' })
-check('pull ok and returns all 8 tables', r.ok && ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'].every((t) => Array.isArray(r.data[t])), r.data && Object.keys(r.data))
-check('tabs created with header row', Object.keys(sheets).length === 8 && Object.keys(r.data).join() === 'accounts,categories,transactions,assetCategories,assets,assetSnapshots,appSettings,financialSnapshots' && sheets.transactions.data[0].join() === 'id,date,type,amount,categoryId,accountId,toAccountId,assetId,investmentQuantity,investmentUnitPrice,note,updatedAt,deleted' && sheets.accounts.data[0].join() === 'id,name,kind,openingBalance,currentBalance,color,icon,archived,updatedAt,deleted' && sheets.appSettings.data[0].join() === 'id,autoSync,moneyInputMultiplier,moneyInputCurrencyCode,snapshotDay,snapshotMode,updatedAt,deleted', sheets.transactions && sheets.transactions.data[0])
+check('pull ok and returns all 9 tables', r.ok && ['accounts', 'categories', 'tags', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'].every((t) => Array.isArray(r.data[t])), r.data && Object.keys(r.data))
+check('tabs created with header row', Object.keys(sheets).length === 9 && Object.keys(r.data).join() === 'accounts,categories,tags,transactions,assetCategories,assets,assetSnapshots,appSettings,financialSnapshots' && sheets.transactions.data[0].join() === 'id,date,type,amount,categoryId,accountId,toAccountId,assetId,investmentQuantity,investmentUnitPrice,note,tagIds,updatedAt,deleted' && sheets.accounts.data[0].join() === 'id,name,kind,openingBalance,currentBalance,color,icon,archived,updatedAt,deleted' && sheets.appSettings.data[0].join() === 'id,autoSync,moneyInputMultiplier,moneyInputCurrencyCode,snapshotDay,snapshotMode,updatedAt,deleted', sheets.transactions && sheets.transactions.data[0])
 
 // ---------------------------------------------------------------- push / LWW
 r = send({ token: T, action: 'push', changes: { transactions: [tx('a', 50000, '2026-09-30T01:00:00Z'), tx('b', 30000, '2026-09-30T01:00:00Z')] } })
@@ -164,14 +164,14 @@ check('transfer transaction round trips accountId/toAccountId', tr && tr.type ==
   r = send({ token: T, action: 'pull' })
   const o1 = r.data.transactions.find((t) => t.id === 'o1')
   const o2 = r.data.transactions.find((t) => t.id === 'o2')
-  check('migration: header gained accountId,toAccountId at the end', old.data[0].join() === 'id,date,type,amount,categoryId,note,updatedAt,deleted,accountId,toAccountId,assetId,investmentQuantity,investmentUnitPrice', old.data[0])
+  check('migration: header gained accountId,toAccountId at the end', old.data[0].join() === 'id,date,type,amount,categoryId,note,updatedAt,deleted,accountId,toAccountId,assetId,investmentQuantity,investmentUnitPrice,tagIds', old.data[0])
   check('migration: old rows read accountId/toAccountId as "" (not undefined/null)', o1 && o2 && o1.accountId === '' && o1.toAccountId === '' && o2.accountId === '' && o2.toAccountId === '', [o1, o2])
   check('migration: old values intact', o1.amount === 12000 && o1.note === 'cũ 1' && o1.categoryId === 'cat-food' && o1.deleted === false && o2.amount === 900000 && o2.type === 'income' && o2.deleted === true && o2.date === '2026-08-02', [o1, o2])
   r = send({ token: T, action: 'push', changes: { transactions: [tx('o1', 34000, '2026-10-07T00:00:00Z', { accountId: 'acc2', note: 'sửa' }), tx('o3', 5, '2026-10-07T00:00:00Z', { accountId: 'acc1', toAccountId: 'acc2', type: 'transfer' })] } })
   const h = old.data[0]
   const rowOf = (id) => old.data.find((x, i) => i > 0 && x[h.indexOf('id')] === id)
   const w1 = rowOf('o1'), w2 = rowOf('o2'), w3 = rowOf('o3')
-  check('migration: update of old row lands in correct columns', w1[h.indexOf('amount')] === 34000 && w1[h.indexOf('accountId')] === 'acc2' && w1[h.indexOf('toAccountId')] === '' && w1[h.indexOf('note')] === 'sửa' && w1[h.indexOf('categoryId')] === 'cat-food' && w1[h.indexOf('updatedAt')] === '2026-10-07T00:00:00Z' && w1.length === 13, w1)
+  check('migration: update of old row lands in correct columns', w1[h.indexOf('amount')] === 34000 && w1[h.indexOf('accountId')] === 'acc2' && w1[h.indexOf('toAccountId')] === '' && w1[h.indexOf('note')] === 'sửa' && w1[h.indexOf('categoryId')] === 'cat-food' && w1[h.indexOf('updatedAt')] === '2026-10-07T00:00:00Z' && w1.length === 14, w1)
   check('migration: untouched old row unchanged; appended row correct', w2[h.indexOf('note')] === 'cũ 2' && w2[h.indexOf('amount')] === 900000 && w3[h.indexOf('toAccountId')] === 'acc2' && w3[h.indexOf('type')] === 'transfer', [w2, w3])
   check('migration: push response reads back merged rows', r.ok && r.data.transactions.find((t) => t.id === 'o1').accountId === 'acc2' && r.data.transactions.length === 3)
   // restore a fresh table so later tests are unaffected
@@ -287,6 +287,31 @@ const ts = require('typescript');
 const ioExports = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', 'src/components/settings/dataIO.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: ioExports, require: () => ({}) });
 check('CSV neutralizes spreadsheet formulas and preserves negative numbers', ioExports.csvCell('=1+1') === "'=1+1" && ioExports.csvCell(-200) === '-200' && ioExports.csvCell('a,b') === '"a,b"');
+
+const tagExports = {};
+const localTags = [];
+const tagStore = { getState: () => ({ tables: { tags: localTags } }), newId: () => 'random-id', upsert: (_table, draft) => { const row = { ...draft, updatedAt: 'now' }; const i = localTags.findIndex((tag) => tag.id === row.id); if (i < 0) localTags.push(row); else localTags[i] = row; return row; } };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', 'src/lib/tags.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: tagExports, require: () => tagStore });
+const localTag = tagExports.saveTag(' ##CA\u0300PHÊ ');
+check('tag names normalize Unicode and reject spaces', localTag.name === 'càphê' && !tagExports.validTagName('bad name'));
+let duplicateTag = false; try { tagExports.saveTag('CÀPHÊ'); } catch { duplicateTag = true; }
+check('normalized duplicate tag rejected', duplicateTag);
+check('tag counts exclude deleted transactions', tagExports.tagUsage([{ tagIds: [localTag.id] }, { tagIds: [localTag.id], deleted: true }]).get(localTag.id) === 1);
+
+// Tag validation and compatibility with clients that omit tagIds.
+const tag = (id, name, archived = false) => ({ id, name, archived, updatedAt: '2090-01-01T00:00:00Z', deleted: false });
+let tagged = send({ token: T, action: 'push', changes: { tags: [tag('tag-a', 'càphê'), tag('tag-b', 'constructor')], transactions: [tx('tagged', 10, '2090-01-01T00:00:00Z', { tagIds: ['tag-a'] })] } });
+check('tags and Unicode names round trip', tagged.ok && tagged.data.transactions.find((t) => t.id === 'tagged').tagIds[0] === 'tag-a' && tagged.data.tags.length === 2);
+let legacy = send({ token: T, action: 'push', changes: { transactions: [tx('tagged', 11, '2091-01-01T00:00:00Z')] } });
+check('old client update preserves tags', legacy.ok && legacy.data.transactions.find((t) => t.id === 'tagged').tagIds[0] === 'tag-a');
+check('duplicate references rejected', !send({ token: T, action: 'push', changes: { transactions: [tx('bad-tags', 1, '2091', { tagIds: ['tag-a', 'tag-a'] })] } }).ok);
+check('four tags rejected', !send({ token: T, action: 'push', changes: { tags: [tag('tag-c', 'c'), tag('tag-d', 'd')], transactions: [tx('bad-tags', 1, '2091', { tagIds: ['tag-a', 'tag-b', 'tag-c', 'tag-d'] })] } }).ok);
+check('unknown references rejected', !send({ token: T, action: 'push', changes: { transactions: [tx('bad-tags', 1, '2091', { tagIds: ['missing'] })] } }).ok);
+check('invalid and duplicate names rejected', !send({ token: T, action: 'push', changes: { tags: [tag('x', 'bad name')] } }).ok && !send({ token: T, action: 'push', changes: { tags: [tag('x', 'càphê')] } }).ok);
+send({ token: T, action: 'push', changes: { tags: [{ ...tag('tag-a', 'càphê', true), updatedAt: '2092' }] } });
+check('archived references retained but cannot be newly added', send({ token: T, action: 'push', changes: { transactions: [tx('tagged', 12, '2093', { tagIds: ['tag-a'] })] } }).ok && !send({ token: T, action: 'push', changes: { transactions: [tx('new-tagged', 12, '2093', { tagIds: ['tag-a'] })] } }).ok);
+check('backup can restore archived tag references together', send({ token: T, action: 'push', changes: { tags: [{ ...tag('tag-a', 'càphê', true), updatedAt: '2092' }], transactions: [tx('restored-tagged', 12, '2093', { tagIds: ['tag-a'] })] } }).ok);
+check('explicit empty array clears tags', send({ token: T, action: 'push', changes: { transactions: [tx('tagged', 12, '2094', { tagIds: [] })] } }).data.transactions.find((t) => t.id === 'tagged').tagIds.length === 0);
 
 console.log(failed ? `\n${failed} check(s) FAILED` : '\nAll checks PASSED')
 process.exitCode = failed ? 1 : 0

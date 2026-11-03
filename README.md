@@ -75,7 +75,8 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 |---|---|
 | `accounts` | id, name, kind, openingBalance, currentBalance, color, icon, archived, updatedAt, deleted |
 | `categories` | id, name, type, parentId, color, icon, budget, updatedAt, deleted |
-| `transactions` | id, date, type, amount, categoryId, accountId, toAccountId, note, updatedAt, deleted |
+| `tags` | id, name, archived, updatedAt, deleted |
+| `transactions` | id, date, type, amount, categoryId, accountId, toAccountId, note, tagIds, updatedAt, deleted |
 | `assetCategories` | id, name, color, targetPercent, updatedAt, deleted |
 | `assets` | id, name, categoryId, quantity, unit, costBasis, currentPrice, currentValue, note, updatedAt, deleted |
 | `assetSnapshots` | id, assetId, date, value, updatedAt, deleted |
@@ -94,3 +95,7 @@ Mỗi bảng là một tab cùng tên, dòng 1 là tiêu đề (được tạo t
 - Nếu thay đổi ngày chụp sau khi đã qua ngày mới trong tháng, kỳ đó không được tạo bù. Thay đổi lịch không sửa kỳ đã chốt. Biến động tài sản không đồng nghĩa lợi nhuận đầu tư.
 
 Ghi chú: `date` định dạng `YYYY-MM-DD`; `id`, `date`, `updatedAt` và các cột văn bản được lưu dạng text để Sheets không tự chuyển thành ngày/công thức; `deleted` và `archived` là TRUE/FALSE; `type` của giao dịch là `expense`, `income` hoặc `transfer` (chuyển tiền: `accountId` -> `toAccountId`); `kind` của nguồn tiền là `cash`, `bank`, `ewallet` hoặc `credit`; `openingBalance` có thể âm; sheet cũ thiếu cột `accountId`/`toAccountId` sẽ được script tự thêm vào cuối (dòng cũ để trống); số tiền tính bằng VND.
+
+### Thẻ giao dịch
+
+Thêm, đổi tên hoặc lưu trữ thẻ trong Danh mục. Mỗi giao dịch có tối đa 3 thẻ; tìm giao dịch bằng `#tên_thẻ`. Thẻ đã lưu trữ vẫn hiện trên giao dịch cũ. Tên thẻ không có khoảng trắng, tối đa 30 ký tự chữ, số, `_` hoặc `-`. Bản sao lưu JSON chứa thẻ và CSV xuất tên thẻ. Cập nhật và triển khai lại `apps-script/Code.gs` trước khi đồng bộ thẻ.

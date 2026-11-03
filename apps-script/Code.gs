@@ -12,14 +12,15 @@
 var SHEET_COLUMNS = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
-  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'investmentQuantity', 'investmentUnitPrice', 'note', 'updatedAt', 'deleted'],
+  tags: ['id', 'name', 'archived', 'updatedAt', 'deleted'],
+  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'investmentQuantity', 'investmentUnitPrice', 'note', 'tagIds', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],
   financialSnapshots: ['id', 'month', 'scheduledDate', 'capturedAt', 'data', 'updatedAt', 'deleted'],
   appSettings: ['id', 'autoSync', 'moneyInputMultiplier', 'moneyInputCurrencyCode', 'snapshotDay', 'snapshotMode', 'updatedAt', 'deleted']
 };
-var TABLE_NAMES = ['accounts', 'categories', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'];
+var TABLE_NAMES = ['accounts', 'categories', 'tags', 'transactions', 'assetCategories', 'assets', 'assetSnapshots', 'appSettings', 'financialSnapshots'];
 var NUMBER_FIELDS = ['amount', 'investmentQuantity', 'investmentUnitPrice', 'budget', 'targetPercent', 'quantity', 'costBasis', 'currentPrice', 'currentValue', 'value', 'openingBalance', 'currentBalance', 'moneyInputMultiplier', 'snapshotDay'];
 var BOOLEAN_FIELDS = ['deleted', 'archived', 'autoSync'];
 var DATE_FIELDS = ['date']; // yyyy-MM-dd text; other text fields that hold Dates become ISO strings
@@ -154,6 +155,12 @@ function readTable_(table) {
 }
 
 function fromCell_(field, v) {
+  if (field === 'tagIds') {
+    if (v == null || v === '') return [];
+    var ids = JSON.parse(String(v));
+    if (!Array.isArray(ids) || ids.length > 3 || ids.some(function (id) { return typeof id !== 'string' || !id; }) || new Set(ids).size !== ids.length) throw new Error('Dữ liệu thẻ không hợp lệ.');
+    return ids;
+  }
   if (NUMBER_FIELDS.indexOf(field) >= 0) {
     if (field === 'currentBalance' && (v == null || v === '')) return '';
     var n = Number(v);
@@ -172,6 +179,7 @@ function fromCell_(field, v) {
 }
 
 function toCell_(field, v) {
+  if (field === 'tagIds') return JSON.stringify(v == null ? [] : v);
   if (NUMBER_FIELDS.indexOf(field) >= 0) {
     var n = Number(v);
     return isFinite(n) ? n : 0;
@@ -183,6 +191,24 @@ function toCell_(field, v) {
 // ---------------------------------------------------------------- writing
 
 function applyChanges_(changes) {
+  // Validate all tag changes before writing any sheet.
+  var tags = readTable_('tags');
+  (changes.tags || []).forEach(function (tag) {
+    if (!tag || typeof tag.id !== 'string' || !tag.id || typeof tag.name !== 'string' || tag.name !== tag.name.trim().replace(/^#+/, '').toLowerCase().normalize('NFC') || !/^[\p{L}\p{N}_-]{1,30}$/u.test(tag.name)) throw new Error('Tên thẻ không hợp lệ.');
+    var previous = tags.find(function (t) { return t.id === tag.id; });
+    if (previous && previous.updatedAt > tag.updatedAt) return;
+    tags = tags.filter(function (t) { return t.id !== tag.id; });
+    tags.push(tag);
+  });
+  var names = Object.create(null);
+  tags.forEach(function (tag) { if (!tag.deleted) { if (names[tag.name]) throw new Error('Tên thẻ đã tồn tại.'); names[tag.name] = true; } });
+  var existingTransactions = readTable_('transactions');
+  (changes.transactions || []).forEach(function (tx) {
+    if (!Object.prototype.hasOwnProperty.call(tx, 'tagIds')) return;
+    var previous = existingTransactions.find(function (row) { return row.id === tx.id; });
+    var retained = previous ? previous.tagIds : [];
+    if (!Array.isArray(tx.tagIds) || tx.tagIds.length > 3 || new Set(tx.tagIds).size !== tx.tagIds.length || tx.tagIds.some(function (id) { return typeof id !== 'string' || !tags.some(function (tag) { return tag.id === id && !tag.deleted && (!tag.archived || retained.indexOf(id) >= 0 || (changes.tags || []).some(function (incoming) { return incoming.id === id && incoming.archived; })); }); })) throw new Error('Thẻ giao dịch không hợp lệ.');
+  });
   TABLE_NAMES.forEach(function (table) {
     var incoming = changes[table];
     if (!incoming || !incoming.length) return;
@@ -227,7 +253,7 @@ function upsertRows_(table, incoming) {
       var pos = byId[id];
       var storedUpd = fromCell_('updatedAt', existing[pos][updIdx]);
       if (incomingUpd < storedUpd) return; // stale write loses
-      cols.forEach(function (c, k) { existing[pos][colIdx[k]] = toCell_(c, rec[c]); });
+      cols.forEach(function (c, k) { if (table !== 'transactions' || c !== 'tagIds' || Object.prototype.hasOwnProperty.call(rec, c)) existing[pos][colIdx[k]] = toCell_(c, rec[c]); });
       dirtyExisting = true;
     } else {
       var row = new Array(lastCol);

@@ -24,6 +24,11 @@ export interface Category extends BaseRecord {
   budget: number
 }
 
+export interface Tag extends BaseRecord {
+  name: string
+  archived: boolean
+}
+
 export interface Transaction extends BaseRecord {
   /** YYYY-MM-DD */
   date: string
@@ -40,6 +45,7 @@ export interface Transaction extends BaseRecord {
   investmentQuantity?: number
   investmentUnitPrice?: number
   note: string
+  tagIds?: string[]
 }
 
 export type AccountKind = 'cash' | 'bank' | 'ewallet' | 'credit'
@@ -106,6 +112,7 @@ export interface FinancialSnapshot extends BaseRecord {
 export interface Tables {
   accounts: Account[]
   categories: Category[]
+  tags: Tag[]
   transactions: Transaction[]
   assetCategories: AssetCategory[]
   assets: Asset[]
@@ -120,6 +127,7 @@ export type RecordOf<T extends TableName> = Tables[T][number]
 export const TABLE_NAMES: TableName[] = [
   'accounts',
   'categories',
+  'tags',
   'transactions',
   'assetCategories',
   'assets',
@@ -131,7 +139,8 @@ export const TABLE_NAMES: TableName[] = [
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   accounts: ['id', 'name', 'kind', 'openingBalance', 'currentBalance', 'color', 'icon', 'archived', 'updatedAt', 'deleted'],
   categories: ['id', 'name', 'type', 'parentId', 'color', 'icon', 'budget', 'updatedAt', 'deleted'],
-  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'investmentQuantity', 'investmentUnitPrice', 'note', 'updatedAt', 'deleted'],
+  tags: ['id', 'name', 'archived', 'updatedAt', 'deleted'],
+  transactions: ['id', 'date', 'type', 'amount', 'categoryId', 'accountId', 'toAccountId', 'assetId', 'investmentQuantity', 'investmentUnitPrice', 'note', 'tagIds', 'updatedAt', 'deleted'],
   assetCategories: ['id', 'name', 'color', 'targetPercent', 'updatedAt', 'deleted'],
   assets: ['id', 'name', 'categoryId', 'quantity', 'unit', 'costBasis', 'currentPrice', 'currentValue', 'note', 'updatedAt', 'deleted'],
   assetSnapshots: ['id', 'assetId', 'date', 'value', 'updatedAt', 'deleted'],

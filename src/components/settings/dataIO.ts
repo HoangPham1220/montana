@@ -3,6 +3,7 @@ import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { getState, importTables as importIntoStore } from '../../lib/store'
 import { today } from '../../lib/format'
 import { categoryLabel } from '../../lib/categoryTree'
+import { normalizeTagName, validTagName } from '../../lib/tags'
 import { parseSnapshot } from '../../lib/financialReports'
 import { Capacitor } from '@capacitor/core'
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
@@ -43,6 +44,7 @@ export const csvCell = (v: string | number) => {
 export function exportTransactionsCsv() {
   const { tables } = getState()
   const cats = new Map(tables.categories.map((c) => [c.id, c]))
+  const tags = new Map(tables.tags.map((tag) => [tag.id, tag.name]))
   const accs = new Map(tables.accounts.map((a) => [a.id, a.name]))
   const accName = (id: string) => accs.get(id || DEFAULT_ACCOUNT_ID) ?? ''
   const typeLabel = { expense: 'Chi', income: 'Thu', transfer: 'Chuyển', adjustment: 'Điều chỉnh số dư' , investment: 'Đầu tư'} as const
@@ -57,8 +59,9 @@ export function exportTransactionsCsv() {
       t.type === 'transfer' ? accName(t.toAccountId) : '',
       t.amount,
       t.note,
+      (t.tagIds ?? []).map((id) => tags.get(id)).filter(Boolean).map((name) => `#${name}`).join(' '),
     ])
-  const header = ['Ngày', 'Loại', 'Danh mục', 'Nguồn tiền', 'Đến', 'Số tiền', 'Ghi chú']
+  const header = ['Ngày', 'Loại', 'Danh mục', 'Nguồn tiền', 'Đến', 'Số tiền', 'Ghi chú', 'Thẻ']
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')
   download(`montana-giao-dich-${today()}.csv`, '﻿' + csv, 'text/csv;charset=utf-8')
 }
@@ -83,6 +86,19 @@ export function parseBackup(text: string): Partial<Tables> {
     found = true
   }
   if (!found) throw new Error('Không tìm thấy bảng dữ liệu nào trong file.')
+  const combinedTags = new Map(getState().tables.tags.map((tag) => [tag.id, tag]))
+  for (const tag of out.tags ?? []) {
+    const previous = combinedTags.get(tag.id)
+    if (!previous || previous.updatedAt <= tag.updatedAt) combinedTags.set(tag.id, tag)
+  }
+  const tagNames = new Set<string>()
+  for (const tag of combinedTags.values()) {
+    if (typeof tag.name !== 'string' || tag.name !== normalizeTagName(tag.name) || !validTagName(tag.name) || (!tag.deleted && tagNames.has(tag.name))) throw new Error('Dữ liệu thẻ không hợp lệ.')
+    if (!tag.deleted) tagNames.add(tag.name)
+  }
+  for (const tx of out.transactions ?? []) {
+    if (tx.tagIds !== undefined && (!Array.isArray(tx.tagIds) || tx.tagIds.length > 3 || new Set(tx.tagIds).size !== tx.tagIds.length || tx.tagIds.some((id) => typeof id !== 'string' || !id || !combinedTags.has(id) || combinedTags.get(id)?.deleted))) throw new Error('Thẻ giao dịch không hợp lệ.')
+  }
   out.financialSnapshots?.forEach(parseSnapshot)
   return out
 }

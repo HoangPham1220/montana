@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { formatVND, today } from '../../lib/format'
 import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { deleteTransaction, saveTransaction, txAccountId, useAccountBalances } from '../../lib/accounts'
-import { upsert, useTable } from '../../lib/store'
+import { getState, upsert, useTable } from '../../lib/store'
+import { normalizeTagName, saveTag, tagUsage, validTagName } from '../../lib/tags'
 import { isSelectableCategory } from '../../lib/categoryTree'
 import type { Account, Category, Transaction, TransactionType } from '../../lib/types'
 import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
@@ -46,6 +47,12 @@ export default function TransactionForm({ open, ...rest }: Props) {
 
 function Body({ editing, categories, defaultType = 'expense', defaultDate, defaultAccountId, onClose }: Omit<Props, 'open'>) {
   const { accounts, balances } = useAccountBalances()
+  const tags = useTable('tags')
+  const transactions = useTable('transactions')
+  const [tagIds, setTagIds] = useState<string[]>(editing?.tagIds ?? [])
+  const [tagSearch, setTagSearch] = useState('')
+  const usage = tagUsage(transactions)
+  const matches = tags.filter((tag) => !tag.archived && !tagIds.includes(tag.id) && tag.name.includes(normalizeTagName(tagSearch))).sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || a.name.localeCompare(b.name)).slice(0, 5)
   const assets = useTable('assets')
   const assetCategories = useTable('assetCategories')
   const [type, setType] = useState<TransactionType>(editing?.type ?? defaultType)
@@ -97,9 +104,10 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       if (!newAsset && !assets.some((a) => a.id === assetId)) return setError('Chọn tài sản')
     } else if (!selected) return setError('Chọn danh mục')
     if (!date) return setError('Chọn ngày')
+    if (tagIds.some((id) => { const tag = getState().tables.tags.find((item) => item.id === id && !item.deleted); return !tag || (tag.archived && !editing?.tagIds?.includes(id)) })) return setError('Thẻ đã thay đổi. Hãy chọn lại thẻ.')
     let linkedAssetId = assetId
     if (isInvestment && newAsset) linkedAssetId = upsert('assets', { name: assetName.trim(), categoryId: assetCategoryId, quantity: 0, unit: newAssetUnit.trim(), costBasis: 0, currentValue: 0, note: '' }).id
-    saveTransaction({
+    try { saveTransaction({
       id: editing?.id,
       type,
       amount: transactionAmount,
@@ -111,12 +119,15 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       investmentUnitPrice: isInvestment ? investmentUnitPrice : undefined,
       date,
       note: note.trim(),
-    })
+      tagIds,
+    }) } catch (e) { return setError((e as Error).message) }
     rememberAccount(accountId)
     if (again && !editing) {
       setAmount(0)
       if (isInvestment) setInvestmentQuantity(0)
       setNote('')
+      setTagIds([])
+      setTagSearch('')
       setError('')
       setAmountKey((k) => k + 1) // remount MoneyInput to refocus
     } else onClose()
@@ -244,6 +255,20 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
       <Field label="Ngày">
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </Field>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Thẻ ({tagIds.length}/3)</p>
+        <div className="flex flex-wrap gap-2">
+          {tagIds.map((id) => { const tag = tags.find((item) => item.id === id); return tag && <button key={id} type="button" onClick={() => setTagIds(tagIds.filter((item) => item !== id))} aria-label={`Bỏ thẻ ${tag.name}`} className="max-w-full break-all rounded-full bg-lime-100 px-3 py-1 text-sm text-lime-900 dark:bg-lime-900 dark:text-lime-100">#{tag.name} ×</button> })}
+        </div>
+        {tagIds.length < 3 && <>
+          <Input aria-label="Tìm hoặc tạo thẻ" placeholder="Tìm hoặc tạo thẻ" value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} />
+          {tagSearch && !validTagName(normalizeTagName(tagSearch)) && <p className="text-xs text-slate-500">Thẻ tối đa 30 ký tự, chỉ gồm chữ, số, _ hoặc -.</p>}
+          <div className="flex flex-wrap gap-2">
+            {matches.map((tag) => <button key={tag.id} type="button" onClick={() => { setTagIds([...tagIds, tag.id]); setTagSearch('') }} className="rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800">+ #{tag.name}</button>)}
+            {validTagName(normalizeTagName(tagSearch)) && !tags.some((tag) => tag.name === normalizeTagName(tagSearch)) && <button type="button" onClick={() => { try { const tag = saveTag(tagSearch); setTagIds([...tagIds, tag.id]); setTagSearch('') } catch (e) { setError((e as Error).message) } }} className="rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800">+ Tạo #{normalizeTagName(tagSearch)}</button>}
+          </div>
+        </>}
+      </div>
       <Field label="Ghi chú">
         <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tuỳ chọn" />
       </Field>

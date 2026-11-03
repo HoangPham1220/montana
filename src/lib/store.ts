@@ -56,6 +56,7 @@ function appSettingsRecord(settings: Settings, updatedAt = EPOCH): AppSettingsRe
 const emptyTables = (): Tables => ({
   accounts: [],
   categories: [],
+  tags: [],
   transactions: [],
   assetCategories: [],
   assets: [],
@@ -104,6 +105,7 @@ function load(): State {
         ...t,
         accountId: t.accountId ?? '',
         toAccountId: t.toAccountId ?? '',
+        tagIds: t.tagIds ?? [],
       }))
       const migratedAccountIds = fillMissingAccountBalances(tables)
       dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds]))
@@ -189,6 +191,20 @@ export function newId(): string {
 
 type Draft<T extends TableName> = Omit<RecordOf<T>, 'id' | 'updatedAt'> & { id?: string }
 
+function validateTags(tables: Tables) {
+  const names = new Set<string>()
+  const ids = new Set<string>()
+  for (const tag of tables.tags) if (!tag.deleted) {
+    if (typeof tag.name !== 'string' || tag.name !== tag.name.trim().replace(/^#+/, '').toLowerCase().normalize('NFC') || !/^[\p{L}\p{N}_-]{1,30}$/u.test(tag.name) || names.has(tag.name)) throw new Error('Dữ liệu thẻ không hợp lệ.')
+    names.add(tag.name)
+    ids.add(tag.id)
+  }
+  for (const tx of tables.transactions) {
+    const tagIds = tx.tagIds ?? []
+    if (!Array.isArray(tagIds) || tagIds.length > 3 || new Set(tagIds).size !== tagIds.length || tagIds.some((id) => typeof id !== 'string' || !ids.has(id))) throw new Error('Thẻ giao dịch không hợp lệ.')
+  }
+}
+
 /** Create or update a record. Returns the saved record. */
 export function upsert<T extends TableName>(table: T, draft: Draft<T>): RecordOf<T> {
   if (table === 'financialSnapshots' && state.tables.financialSnapshots.some((r) => r.id === draft.id)) throw new Error('Snapshot đã chốt không thể sửa.')
@@ -196,6 +212,15 @@ export function upsert<T extends TableName>(table: T, draft: Draft<T>): RecordOf
   const rows = state.tables[table] as RecordOf<T>[]
   const idx = rows.findIndex((r) => r.id === record.id)
   const nextRows = idx >= 0 ? rows.map((r, i) => (i === idx ? { ...r, ...record } : r)) : [...rows, record]
+  if (table === 'tags' || table === 'transactions') {
+    const tables = { ...state.tables, [table]: nextRows } as Tables
+    validateTags(tables)
+    if (table === 'transactions') {
+      const previous = rows[idx] as Tables['transactions'][number] | undefined
+      const transaction = record as Tables['transactions'][number]
+      if ((transaction.tagIds ?? []).some((id) => tables.tags.find((tag) => tag.id === id)?.archived && !previous?.tagIds?.includes(id))) throw new Error('Không thể thêm thẻ đã lưu trữ.')
+    }
+  }
   markChanged(table, nextRows, [record.id])
   return record
 }
@@ -234,6 +259,7 @@ export function importTables(incoming: Partial<Tables>): number {
       if (!rec.id) continue
       const cur = byId.get(rec.id)
       if (cur && (t === 'financialSnapshots' || cur.updatedAt > rec.updatedAt)) continue
+      if (t === 'transactions' && !('tagIds' in raw) && cur) (rec as Tables['transactions'][number]).tagIds = (cur as Tables['transactions'][number]).tagIds ?? []
       byId.set(rec.id, rec)
       ids.push(rec.id)
       applied++
@@ -241,6 +267,7 @@ export function importTables(incoming: Partial<Tables>): number {
     ;(tables as unknown as Record<string, unknown[]>)[t] = Array.from(byId.values())
     dirty[t] = Array.from(new Set([...dirty[t], ...ids]))
   }
+  validateTags(tables)
   const migratedAccountIds = fillMissingAccountBalances(tables)
   dirty.accounts = Array.from(new Set([...dirty.accounts, ...migratedAccountIds]))
   const importedSettings = tables.appSettings.find((row) => row.id === APP_SETTINGS_ID && !row.deleted)
@@ -326,6 +353,7 @@ function normalize(table: TableName, row: Record<string, unknown>): RecordOf<Tab
   if (table === 'transactions') {
     out.accountId = out.accountId == null ? '' : String(out.accountId)
     out.toAccountId = out.toAccountId == null ? '' : String(out.toAccountId)
+    if (!('tagIds' in out)) out.tagIds = []
   }
   if (table === 'transactions' || table === 'assetSnapshots') {
     // Sheets may turn YYYY-MM-DD into a Date; the backend sends ISO strings.
@@ -373,9 +401,39 @@ export function sync(): Promise<void> {
   return inFlight
 }
 
-async function doSync() {
+async function doSync(retryDuplicate = false) {
   setState({ ...state, sync: { ...state.sync, status: 'syncing', error: null } })
   try {
+    if (state.tables.tags.length > 0 || state.tables.transactions.some((tx) => (tx.tagIds?.length ?? 0) > 0)) {
+      const probe = await call({ token: state.settings.token, action: 'pull' })
+      if (!probe.ok) throw new Error(probe.error)
+      if (!probe.data?.tags || probe.data.transactions?.some((t) => !('tagIds' in t))) throw new Error('Hãy cập nhật và triển khai Code.gs mới để đồng bộ thẻ.')
+      const remoteTags = probe.data.tags.filter((tag) => !tag.deleted)
+      const replacements = new Map<string, string>()
+      let tags = [...state.tables.tags]
+      for (const tag of tags.filter((item) => state.dirty.tags.includes(item.id) && !item.deleted)) {
+        const sameId = remoteTags.find((item) => item.id === tag.id)
+        const sameName = remoteTags.find((item) => item.name === tag.name)
+        if (sameName && sameName.id !== tag.id) {
+          replacements.set(tag.id, sameName.id)
+          tags = tags.filter((item) => item.id !== tag.id && item.id !== sameName.id)
+          tags.push(sameName)
+        } else if (sameId && sameId.name !== tag.name && tag.id === `tag:${encodeURIComponent(tag.name)}`) {
+          const id = newId()
+          replacements.set(tag.id, id)
+          tags = tags.map((item) => item.id === tag.id ? { ...item, id } : item)
+          tags.push(sameId)
+        }
+      }
+      if (replacements.size) {
+        const updatedAt = new Date().toISOString()
+        const transactions = state.tables.transactions.map((tx) => (tx.tagIds ?? []).some((id) => replacements.has(id)) ? { ...tx, tagIds: [...new Set(tx.tagIds!.map((id) => replacements.get(id) ?? id))], updatedAt } : tx)
+        const dirtyTags = state.dirty.tags.filter((id) => !replacements.has(id))
+        for (const id of replacements.values()) if (tags.some((tag) => tag.id === id)) dirtyTags.push(id)
+        const dirtyTransactions = transactions.filter((tx, i) => tx !== state.tables.transactions[i]).map((tx) => tx.id)
+        setState({ ...state, tables: { ...state.tables, tags, transactions }, dirty: { ...state.dirty, tags: [...new Set(dirtyTags)], transactions: [...new Set([...state.dirty.transactions, ...dirtyTransactions])] } })
+      }
+    }
     const pushed = state.dirty
     const changes: Partial<Tables> = {}
     const pushedVersions = new Map<string, string>()
@@ -462,6 +520,7 @@ async function doSync() {
     })
     if (migratedAccountIds.length || reconciledAccountIds.length) scheduleSync()
   } catch (e) {
+    if (!retryDuplicate && (e as Error).message.includes('Tên thẻ đã tồn tại.')) return doSync(true)
     setState({ ...state, sync: { ...state.sync, status: 'error', error: (e as Error).message } })
   }
 }

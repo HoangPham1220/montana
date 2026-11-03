@@ -40,8 +40,8 @@ Stack: Vite 8, React 19, TypeScript, Tailwind v4, recharts 3, react-router-dom 7
                                         └───────────────┬─────────────────┘
                                                         │ SpreadsheetApp
                                                         ▼
-                                        Google Sheet: 7 tab (accounts, categories, transactions,
-                                        assetCategories, assets, assetSnapshots, appSettings)
+                                        Google Sheet: 9 tab (accounts, categories, tags, transactions,
+                                        assetCategories, assets, assetSnapshots, appSettings, financialSnapshots)
 ```
 
 Nguyên tắc: **UI chỉ đọc/ghi qua store**, không bao giờ gọi mạng trực tiếp. Mọi thao tác ghi vào localStorage trước (offline-first), rồi sync nền.
@@ -104,7 +104,9 @@ Quy ước chung (`BaseRecord`):
 
 **`categories`** (thu/chi): `name: string`, `type: 'expense' | 'income'`, `parentId?: string` (rỗng/thiếu = danh mục cấp cao nhất; danh mục con chỉ trỏ tới danh mục cấp cao nhất), `color: string`, `icon: string`, `budget: number` (VND/tháng, 0 = không đặt; chỉ có nghĩa với `expense`).
 
-**`transactions`**: `date: string` (`YYYY-MM-DD`), `type: TransactionType` (`'expense' | 'income' | 'transfer'`; `TxType` = chỉ hai giá trị đầu và vẫn là kiểu của `Category.type`), `amount: number` (VND, luôn dương), `categoryId: string`, `accountId: string`, `toAccountId: string`, `note: string`.
+**`tags`**: `name: string` (tên chuẩn hoá, duy nhất), `archived: boolean` (ẩn khỏi lựa chọn mới nhưng vẫn hiện ở giao dịch cũ).
+
+**`transactions`**: `date: string` (`YYYY-MM-DD`), `type: TransactionType` (`'expense' | 'income' | 'transfer'`; `TxType` = chỉ hai giá trị đầu và vẫn là kiểu của `Category.type`), `amount: number` (VND, luôn dương), `categoryId: string`, `accountId: string`, `toAccountId: string`, `note: string`, `tagIds?: string[]` (tối đa 3 id khác nhau, dữ liệu cũ mặc định rỗng; Sheet lưu JSON).
 
 - `accountId` là nguồn tiền của giao dịch (với chuyển tiền là nguồn **đi**). `''` (dòng cũ, tạo trước khi có Nguồn tiền) nghĩa là nguồn mặc định `acc-cash`; **không ghi lại dữ liệu cũ**, quy ước đọc qua `txAccountId(t)`.
 - `type: 'transfer'`: `accountId` -> `toAccountId`, `categoryId = ''`. Với thu/chi `toAccountId = ''`.
@@ -120,7 +122,7 @@ Quy ước chung (`BaseRecord`):
 
 **`financialSnapshots`**: `id: financial:YYYY-MM`, `month`, `scheduledDate`, `capturedAt`, `data` (JSON chứa bản sao `accounts`, `assets`, `assetCategories`). Bản ghi chỉ được thêm, không cập nhật/xoá qua app/API/import. Một ô JSON giới hạn 45.000 ký tự; vượt giới hạn phải chuyển sang bảng chi tiết. `appSettings.snapshotDay` là ngày chụp 1–31, mặc định 10. `installSnapshotTrigger()` cài lịch kiểm tra mỗi ngày khoảng 06–07 giờ Việt Nam; `runFinancialSnapshot()` dùng cùng script lock với API ghi dữ liệu. Không chụp bù ngày đã qua.
 
-`Tables` là object `{ accounts, categories, transactions, assetCategories, assets, assetSnapshots, appSettings, financialSnapshots }`; `TableName = keyof Tables`; `RecordOf<T>` = kiểu phần tử của bảng `T`; `TABLE_NAMES` là mảng thứ tự duyệt.
+`Tables` là object `{ accounts, categories, tags, transactions, assetCategories, assets, assetSnapshots, appSettings, financialSnapshots }`; `TableName = keyof Tables`; `RecordOf<T>` = kiểu phần tử của bảng `T`; `TABLE_NAMES` là mảng thứ tự duyệt.
 
 ### SHEET_COLUMNS
 
@@ -128,7 +130,8 @@ Quy ước chung (`BaseRecord`):
 export const SHEET_COLUMNS: { [K in TableName]: (keyof RecordOf<K>)[] } = {
   accounts:        ['id','name','kind','openingBalance','color','icon','archived','updatedAt','deleted'],
   categories:      ['id','name','type','parentId','color','icon','budget','updatedAt','deleted'],
-  transactions:    ['id','date','type','amount','categoryId','accountId','toAccountId','note','updatedAt','deleted'],
+  tags:            ['id','name','archived','updatedAt','deleted'],
+  transactions:    ['id','date','type','amount','categoryId','accountId','toAccountId','note','tagIds','updatedAt','deleted'],
   assetCategories: ['id','name','color','targetPercent','updatedAt','deleted'],
   assets:          ['id','name','categoryId','quantity','unit','costBasis','currentValue','note','updatedAt','deleted'],
   assetSnapshots:  ['id','assetId','date','value','updatedAt','deleted'],
