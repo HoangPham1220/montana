@@ -4,8 +4,21 @@ import { getState, importTables as importIntoStore } from '../../lib/store'
 import { today } from '../../lib/format'
 import { categoryLabel } from '../../lib/categoryTree'
 import { parseSnapshot } from '../../lib/financialReports'
+import { Capacitor } from '@capacitor/core'
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 
-export function download(filename: string, content: string, mime: string) {
+export async function download(filename: string, content: string, mime: string) {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { uri } = await Filesystem.writeFile({ path: filename, data: content, directory: Directory.Cache, encoding: Encoding.UTF8 })
+      await Share.share({ title: filename, files: [uri], dialogTitle: 'Lưu hoặc chia sẻ bản xuất' })
+    } catch (e) {
+      if (e instanceof Error && e.message === 'Share canceled') return
+      window.alert(`Không thể xuất file. Vui lòng thử lại.\n${e instanceof Error ? e.message : String(e)}`)
+    }
+    return
+  }
   const url = URL.createObjectURL(new Blob([content], { type: mime }))
   const a = document.createElement('a')
   a.href = url

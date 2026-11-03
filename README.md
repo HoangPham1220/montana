@@ -1,5 +1,7 @@
 # Montana
 
+Bản Android: xem [hướng dẫn build, cài APK và chuyển dữ liệu](docs/ANDROID.md).
+
 Ứng dụng web quản lý tài chính cá nhân (Vite + React + TypeScript + Tailwind v4). Dữ liệu lưu ngay trên trình duyệt và có thể đồng bộ lên Google Sheet của chính bạn thông qua Google Apps Script.
 
 Tài liệu khác: [Hướng dẫn sử dụng](HUONG-DAN-SU-DUNG.md) · [Tài liệu cho developer](docs/DEVELOPER.md)
