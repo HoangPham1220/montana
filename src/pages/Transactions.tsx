@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { DEFAULT_ACCOUNT_ID } from '../lib/defaults'
 import { useTable } from '../lib/store'
+import { tagUsage } from '../lib/tags'
 import { categoryLabel } from '../lib/categoryTree'
 import { accountDelta, isIncomeOrExpense, txAccountId, useAccountBalances } from '../lib/accounts'
 import { formatDate, formatVND, monthOf, today } from '../lib/format'
@@ -31,6 +32,10 @@ export default function Transactions() {
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const tagById = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags])
+  const popularTags = useMemo(() => {
+    const usage = tagUsage(transactions)
+    return tags.filter((tag) => !tag.archived).sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || a.name.localeCompare(b.name)).slice(0, 8)
+  }, [tags, transactions])
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
   const accById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
   const assetById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets])
@@ -118,6 +123,9 @@ export default function Transactions() {
           <Input className="min-w-0" type="search" aria-label="Tìm ghi chú hoặc thẻ" placeholder="Tìm ghi chú hoặc #thẻ..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)} className="shrink-0 rounded-full bg-[#e9eee3] px-4 text-sm font-semibold text-[#33432a] hover:bg-[#dce5d4] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Bộ lọc{(accountFilter || categoryFilter) ? ' •' : ''}</button>
         </div>
+        {popularTags.length > 0 && <div className="flex flex-wrap gap-2" aria-label="Thẻ phổ biến">
+          {popularTags.map((tag) => <button key={tag.id} type="button" aria-pressed={search.trim().toLowerCase().normalize('NFC') === `#${tag.name}`} onClick={() => setSearch(`#${tag.name}`)} className={`max-w-full break-all rounded-full px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#596d24] ${search.trim().toLowerCase().normalize('NFC') === `#${tag.name}` ? 'bg-[#c6e848] text-[#202b16]' : 'bg-[#e9eee3] text-[#33432a] hover:bg-[#dce5d4] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'}`}>#{tag.name}</button>)}
+        </div>}
         {filtersOpen && <div className="grid gap-2 sm:grid-cols-2">
         <Select aria-label="Nguồn tiền" value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}>
           <option value="">Tất cả nguồn tiền</option>

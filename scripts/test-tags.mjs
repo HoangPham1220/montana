@@ -1,4 +1,5 @@
 // Run with the dev server on port 5173 and a Playwright module path.
+import assert from 'node:assert/strict'
 import { pathToFileURL } from 'node:url'
 const { chromium } = await import(pathToFileURL(process.argv[2]).href)
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
@@ -51,6 +52,36 @@ const results = await page.evaluate(async () => {
   return 'tag validation, legacy import and failed-sync reconciliation passed'
 })
 console.log(results)
+await page.evaluate(() => {
+  const state = JSON.parse(localStorage.getItem('montana:v1'))
+  const now = new Date()
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const stamp = now.toISOString()
+  state.tables.tags = [...'abcdefghij'].map((name) => ({ id: name, name, archived: false, updatedAt: stamp }))
+  state.tables.tags.push({ id: 'archived', name: 'archived', archived: true, updatedAt: stamp }, { id: 'deleted', name: 'deleted', deleted: true, updatedAt: stamp })
+  const tx = (id, tagIds, deleted = false) => ({ id, date, type: 'expense', amount: 1, categoryId: 'cat-food', accountId: '', toAccountId: '', note: id, tagIds, updatedAt: stamp, deleted })
+  state.tables.transactions = [tx('match', ['b']), tx('match-two', ['b']), tx('other', ['a']), tx('deleted', ['i'], true)]
+  state.settings = { ...state.settings, apiUrl: '', autoSync: false }
+  localStorage.setItem('montana:v1', JSON.stringify(state))
+})
+await page.goto('http://127.0.0.1:5173/#/transactions')
+await page.reload()
+for (const width of [390, 1280]) {
+  await page.setViewportSize({ width, height: 900 })
+  const buttons = page.getByLabel('Thẻ phổ biến').getByRole('button')
+  assert.equal(await buttons.count(), 8)
+  assert.deepEqual(await buttons.allTextContents(), ['#b', '#a', '#c', '#d', '#e', '#f', '#g', '#h'])
+  await buttons.first().click()
+  assert.equal(await page.getByLabel('Tìm ghi chú hoặc thẻ').inputValue(), '#b')
+  assert.equal(await buttons.first().getAttribute('aria-pressed'), 'true')
+  assert.equal(await page.getByText('match', { exact: true }).count(), 1)
+  assert.equal(await page.getByText('other', { exact: true }).count(), 0)
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
+}
+await page.evaluate(() => { const state = JSON.parse(localStorage.getItem('montana:v1')); state.tables.tags = []; state.tables.transactions = []; localStorage.setItem('montana:v1', JSON.stringify(state)) })
+await page.reload()
+assert.equal(await page.getByLabel('Thẻ phổ biến').count(), 0)
+console.log('Popular tags: order, limit, filtering, empty state and responsive layout passed')
 } finally {
   await browser.close()
 }
