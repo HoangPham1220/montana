@@ -26,6 +26,7 @@ export default function Transactions() {
   const [accountFilter, setAccountFilter] = useState(() => searchParams.get('account') ?? '')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [newType, setNewType] = useState<TransactionType>('expense')
@@ -65,6 +66,7 @@ export default function Transactions() {
       .filter((t) => typeFilter === 'all' || t.type === typeFilter)
       .filter((t) => !accountFilter || txAccountId(t) === accountFilter || t.toAccountId === accountFilter)
       .filter((t) => !categoryFilter || t.categoryId === categoryFilter || catById.get(t.categoryId)?.parentId === categoryFilter)
+      .filter((t) => selectedTagIds.every((id) => (t.tagIds ?? []).includes(id)))
       .filter((t) => !q || (q.startsWith('#') ? (t.tagIds ?? []).some((id) => tagById.get(id)?.name.includes(q.slice(1))) : (t.note ?? '').toLowerCase().includes(q)))
       .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
     const map = new Map<string, Transaction[]>()
@@ -74,7 +76,7 @@ export default function Transactions() {
       return t.type === 'income' ? t.amount : t.type === 'expense' ? -t.amount : 0
     }
     return Array.from(map, ([date, items]) => ({ date, items, total: items.reduce((s, t) => s + dayTotal(t), 0) }))
-  }, [inMonth, typeFilter, accountFilter, categoryFilter, search, catById, tagById])
+  }, [inMonth, typeFilter, accountFilter, categoryFilter, search, selectedTagIds, catById, tagById])
 
   const filterCats = useMemo(
     () => categories.filter((c) => typeFilter === 'all' || c.type === typeFilter),
@@ -120,11 +122,14 @@ export default function Transactions() {
           ))}
         </div>
         <div className="flex gap-2">
-          <Input className="min-w-0" type="search" aria-label="Tìm ghi chú hoặc thẻ" placeholder="Tìm ghi chú hoặc #thẻ..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 rounded-xl border border-[#d7dfd1] bg-white px-2 focus-within:border-[#718e2e] focus-within:ring-2 focus-within:ring-[#718e2e]/20 dark:border-slate-700 dark:bg-slate-800">
+            {selectedTagIds.map((id) => { const tag = tagById.get(id); return tag && <button key={id} type="button" aria-label={`Bỏ lọc thẻ ${tag.name}`} onClick={() => setSelectedTagIds((ids) => ids.filter((item) => item !== id))} className="max-w-full break-all rounded-full bg-lime-100 px-3 py-1 text-sm text-lime-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#596d24] dark:bg-lime-900 dark:text-lime-100">#{tag.name} ×</button> })}
+            <Input className="!w-auto min-w-28 flex-1 !border-0 !bg-transparent !px-1 !ring-0" type="search" aria-label="Tìm ghi chú hoặc thẻ" placeholder="Tìm ghi chú hoặc #thẻ..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
           <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)} className="shrink-0 rounded-full bg-[#e9eee3] px-4 text-sm font-semibold text-[#33432a] hover:bg-[#dce5d4] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">Bộ lọc{(accountFilter || categoryFilter) ? ' •' : ''}</button>
         </div>
         {popularTags.length > 0 && <div className="flex flex-wrap gap-2" aria-label="Thẻ phổ biến">
-          {popularTags.map((tag) => <button key={tag.id} type="button" aria-pressed={search.trim().toLowerCase().normalize('NFC') === `#${tag.name}`} onClick={() => setSearch(`#${tag.name}`)} className={`max-w-full break-all rounded-full px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#596d24] ${search.trim().toLowerCase().normalize('NFC') === `#${tag.name}` ? 'bg-[#c6e848] text-[#202b16]' : 'bg-[#e9eee3] text-[#33432a] hover:bg-[#dce5d4] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'}`}>#{tag.name}</button>)}
+          {popularTags.map((tag) => <button key={tag.id} type="button" aria-pressed={selectedTagIds.includes(tag.id)} onClick={() => setSelectedTagIds((ids) => ids.includes(tag.id) ? ids : [...ids, tag.id])} className={`max-w-full break-all rounded-full px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#596d24] ${selectedTagIds.includes(tag.id) ? 'bg-[#c6e848] text-[#202b16]' : 'bg-[#e9eee3] text-[#33432a] hover:bg-[#dce5d4] dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700'}`}>#{tag.name}</button>)}
         </div>}
         {filtersOpen && <div className="grid gap-2 sm:grid-cols-2">
         <Select aria-label="Nguồn tiền" value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}>
@@ -151,7 +156,7 @@ export default function Transactions() {
 
       {groups.length === 0 ? (
         <div className="rounded-2xl bg-white px-5 py-10 text-center dark:bg-slate-900">
-          {inMonth.length === 0 ? <><p className="font-semibold">Chưa có giao dịch trong tháng này</p><button type="button" onClick={() => openNew()} className="mt-3 text-sm font-semibold text-[#52672b] underline dark:text-lime-300">Thêm giao dịch</button></> : <><p className="font-semibold">Không có giao dịch phù hợp</p><button type="button" onClick={() => { setTypeFilter('all'); setAccountFilter(''); setCategoryFilter(''); setSearch('') }} className="mt-3 text-sm font-semibold text-[#52672b] underline dark:text-lime-300">Xóa bộ lọc</button></>}
+          {inMonth.length === 0 ? <><p className="font-semibold">Chưa có giao dịch trong tháng này</p><button type="button" onClick={() => openNew()} className="mt-3 text-sm font-semibold text-[#52672b] underline dark:text-lime-300">Thêm giao dịch</button></> : <><p className="font-semibold">Không có giao dịch phù hợp</p><button type="button" onClick={() => { setTypeFilter('all'); setAccountFilter(''); setCategoryFilter(''); setSearch(''); setSelectedTagIds([]) }} className="mt-3 text-sm font-semibold text-[#52672b] underline dark:text-lime-300">Xóa bộ lọc</button></>}
         </div>
       ) : (
         groups.map((g) => (
@@ -194,7 +199,7 @@ export default function Transactions() {
                           {isTransfer ? `Chuyển tiền: ${accLabel(txAccountId(t))} → ${accLabel(t.toAccountId)}` : isAdjustment ? t.note || 'Điều chỉnh số dư' : isInvestment ? `Đầu tư: ${assetById.get(t.assetId ?? '')?.name ?? 'Tài sản'}` : categoryLabel(c, categories)}
                         </span>
                         {!isTransfer && <span className="block truncate text-xs text-slate-600 dark:text-slate-400">{accLabel(t.accountId)}</span>}
-                        {(t.tagIds ?? []).length > 0 && <span className="block break-all text-xs text-[#52672b] dark:text-lime-300">{(t.tagIds ?? []).map((id) => tagById.get(id)).filter(Boolean).map((tag) => `#${tag!.name}`).join(' ')}</span>}
+                        {(t.tagIds ?? []).length > 0 && <span className="mt-1 flex flex-wrap gap-1">{(t.tagIds ?? []).map((id) => tagById.get(id)).filter(Boolean).map((tag) => <span key={tag!.id} className="max-w-full break-all rounded-full bg-lime-100 px-2 py-0.5 text-xs text-lime-900 dark:bg-lime-900 dark:text-lime-100">#{tag!.name}</span>)}</span>}
                         {t.note && !isAdjustment && <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{t.note}</span>}
                       </span>
                       <span className={`max-w-[55%] break-words text-right text-sm font-semibold tabular-nums ${amountCls}`}>{amountText}</span>
