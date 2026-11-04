@@ -14,10 +14,6 @@ export function rootCategory(category: Category, categories: Category[]) {
   return parentCategory(category, categories) ?? category
 }
 
-export function isSelectableCategory(category: Category, categories: Category[]) {
-  return !categories.some((item) => item.parentId === category.id)
-}
-
 export function categorySpend(category: Category, categories: Category[], spendById: Map<string, number>) {
   return (spendById.get(category.id) ?? 0) + categories
     .filter((item) => item.parentId === category.id)

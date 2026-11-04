@@ -4,7 +4,6 @@ import { DEFAULT_ACCOUNT_ID } from '../../lib/defaults'
 import { deleteTransaction, saveTransaction, txAccountId, useAccountBalances } from '../../lib/accounts'
 import { getState, upsert, useTable } from '../../lib/store'
 import { normalizeTagName, saveTag, tagUsage, validTagName } from '../../lib/tags'
-import { isSelectableCategory } from '../../lib/categoryTree'
 import type { Account, Category, Transaction, TransactionType } from '../../lib/types'
 import { Button, Field, Input, Modal, MoneyInput, Select } from '../ui'
 import TypeToggle from './TypeToggle'
@@ -87,7 +86,7 @@ function Body({ editing, categories, defaultType = 'expense', defaultDate, defau
   const transactionAmount = isInvestment ? Math.round(investmentQuantity * investmentUnitPrice) : amount
 
   const options = useMemo(
-    () => categories.filter((c) => c.type === type && isSelectableCategory(c, categories)),
+    () => categories.filter((c) => c.type === type),
     [categories, type],
   )
   // Keep selection only if it is valid for the current type.
